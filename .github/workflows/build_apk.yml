@@ -12,10 +12,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - run: chmod +x ./AlfredMovil/gradlew
       - name: Compilar APK
         working-directory: ./AlfredMovil
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: AlfredMovil-APK
