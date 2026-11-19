@@ -1,179 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-ALFRED 3.2 - Asistente de voz offline para Windows
+ALFRED 3.5 - Asistente de voz offline para Windows
 
-Novedades de la 3.2.2 (seguridad y privacidad):
-  • DESCARGAS: solo HTTPS, SHA-256 comprobado sobre el .part antes de moverlo (si no coincide se borra y se registra);
-    HASHES_SHA256 para fijar los oficiales y, sin ellos, «confianza en el primer uso» (alfred_hashes.json). Los zip se
-    extraen sin zip-slip ni zip-bomb. pip prefiere «ruedas» (no ejecuta código al instalar)
-  • BINARIOS DE WINDOWS con ruta absoluta (ruta_sistema: System32; explorer.exe está en %SystemRoot%) y shell=False.
-    La voz de respaldo por PowerShell ya no pega el texto dentro del script (inyección con comillas «’»)
-  • CONFIRMACIÓN: se quitó el ajuste confirmar_energia=false; una orden remota no puede decir «sí» a una acción
-    delicada; mover y eliminar archivos validan ruta_peligrosa (con enlaces simbólicos resueltos y la carpeta de Alfred)
-  • CONTROL REMOTO: la clave ya no va en la URL (?t=): se usa #t= una vez y una cookie de sesión HttpOnly +
-    SameSite=Strict (con defensa CSRF y comprobación de Host); la clave se guarda con DPAPI; sin mensajes de error internos
-  • INSTANCIA ÚNICA (puerto 47653) con token efímero en %LOCALAPPDATA%/Alfred (permisos NTFS solo del usuario)
-  • REGISTROS: lo dictado, lo escrito y el portapapeles no se escriben en alfred.log ni en el bus remoto (solo tipo y
-    número de caracteres); el token de Spotify también va con DPAPI
-  • CARPETAS: nada en C:/Users/Public; si el perfil tiene acentos se usa el nombre 8.3 de %LOCALAPPDATA%/Alfred o
-    %PROGRAMDATA%/Alfred/<usuario> con permisos restringidos. Etiquetas y hashes viven en esa carpeta privada
-  • ARRANQUE: el índice de canciones y etiquetas se prepara en segundo plano tras esperar_escucha()
+Novedades de la 3.5.0:
+  • VINCULAR EL TELÉFONO CON UN QR: ☰ Menú → Remoto → «Vincular teléfono» muestra un código; la app Alfred Móvil lo
+    escanea y listo (sin escribir IPs ni claves). El código sirve una sola vez y caduca a los 10 minutos.
+  • UNA CLAVE POR TELÉFONO: cada móvil vinculado tiene la suya (revocable desde la lista «Teléfonos vinculados»). Esa
+    clave no viaja por la red al vincular: se deriva del código del QR en ambos lados.
+  • FUERA DE CASA: el QR lleva todas las direcciones del PC (Wi-Fi y Tailscale) y la app prueba todas y se reconecta
+    sola, aunque el PC cambie de IP. Con Tailscale en el PC y el móvil no hace falta estar en la misma red.
+  • LÍMITES EN EL PC: qué órdenes se pueden dar desde el móvil lo decide ESTE programa (libre / pide confirmación en
+    el teléfono / avanzado / bloqueado), no la app. Apagar, reiniciar, cerrar sesión, consolas y el registro de Windows
+    nunca; teclado y ratón solo si activas «Avanzado». Ver POLITICA_REMOTA.
 
-Novedades de la 3.2.1 (música que entiende, controla y pone canciones en Spotify):
-  • «SIGUIENTE / ANTERIOR / PLAY» EN HARMONOID (y Spotify, apps de la tienda, navegadores): Alfred mandaba el mensaje
-    clásico de Windows (WM_APPCOMMAND), que Windows aceptaba aunque el reproductor lo ignorara, así que nunca probaba
-    otra vía. Ahora los reproductores modernos se controlan por la sesión multimedia de Windows (SMTC, la misma de la
-    pantalla de bloqueo) y, si no está disponible, con la tecla multimedia. «Pausa» pausa y «play» reproduce (antes
-    ambas alternaban). «Qué suena» lee el título y el artista de esa sesión
-  • «REPRODUCE X» YA NO SE CONFUNDE CON OTRA CANCIÓN: además del nombre de archivo y de carpeta, ahora lee las
-    ETIQUETAS (artista y álbum) de tus canciones (FLAC, MP3, M4A…) y las guarda en alfred_etiquetas.json. Si dices el
-    nombre de una banda se reproducen sus canciones; «canciones de X», «música de X» o «la banda X» piden artista
-  • MÚSICA EN PLATAFORMAS: «pon Numb en Spotify», «reproduce Linkin Park en YouTube Music». Spotify: con tu cuenta
-    Premium y un Client ID (☰ Menú → General) busca y pone la canción o el artista de verdad en la app de Spotify.
-    YouTube y YouTube Music: abren el primer resultado en tu navegador. «Plataforma por defecto» en el menú hace que
-    «reproduce X» use siempre esa plataforma; si no encuentra algo en tu biblioteca y Spotify está conectado, lo busca ahí
+Novedades de la 3.4.0:
+  • BURBUJA FLOTANTE: con Alfred en segundo plano, una burbuja pequeña y casi transparente flota en el borde de la
+    pantalla. Respira en reposo, gira al oírte, muestra barras de voz al hablar y despliega una tarjeta con lo que
+    oyó y lo que contesta en el mismo instante en que empieza a sonar la voz. Se aparta sola con un juego o vídeo a
+    pantalla completa, se arrastra (se pega al borde), clic = abrir Alfred, clic derecho = opciones.
+    Se configura en ☰ Menú → General (activar, «siempre visible», tamaño).
+  • ANIMACIONES FLUIDAS: el indicador de la ventana cambia de color y de velocidad con inercia (antes a saltos), las
+    líneas nuevas de la actividad se encienden y se apagan, la ventana se desvanece al ocultarse/mostrarse y el menú
+    se desliza al abrir.
+  • MENOS CONSUMO: las animaciones usan el reloj real (igual de fluidas a cualquier tasa de fotogramas), reutilizan sus
+    elementos en vez de recrearlos, se paran con la ventana oculta, y la burbuja no gasta nada mientras no se ve
+    (visible y quieta ≈ 8 fotogramas/s; activa ≈ 30). La ventana ya no consulta su estado en cada fotograma.
+  • Se quitó (por ahora) el enlace por internet con cuenta de Google de la 3.3.0.
+  • PÁGINA REMOTA LOCAL REPARADA: el script de la página usaba una variable inexistente («T») y se paraba al cargar,
+    así que ni el estado ni el registro en vivo funcionaban; además ya no pide la clave dos veces al abrir el enlace
+  • TAILSCALE: si está instalado, su dirección 100.x.y.z aparece entre los enlaces del control remoto local
 
-Novedades de la 3.2.0 (arranque ágil, música sin fallos y control desde el móvil):
-  • ARRANQUE CON WINDOWS: la ventana y el icono de la bandeja aparecen al instante (antes Alfred esperaba hasta 150 s
-    a ciegas antes de mostrar nada); la espera de barra de tareas y micrófono ocurre en segundo plano y se ve en el
-    estado. Las cargas pesadas (voz Kokoro, inglés, comprensión semántica) esperan a que ya escuche, así el micrófono
-    queda listo antes. Si Python viene de la Microsoft Store se usa un lanzador válido, un segundo arranque ya no
-    «muestra» la ventana, y el log anota cuánto tardó cada fase («⏱️ Arranque…»)
-  • CARPETAS DE MÚSICA: «reproduce la carpeta mis canciones» fallaba porque «mis» y «canciones» se descartaban como
-    relleno y quedaba un nombre vacío. Ahora, si todo era relleno, ese ES el nombre de la carpeta
-  • NOMBRES EN INGLÉS («Mystery Skulls», «Word»…): se prueban TODAS las lecturas del audio (español + inglés y sus
-    alternativas) y gana la que mejor coincide con tu biblioteca; la fonética entiende mejor cómo suena el inglés dicho
-    en español («guord» = word, «escuelas» ~ skulls). Si no encuentra nada, el registro dice lo más parecido que hay
-  • CONTROL REMOTO (base para la versión móvil): API HTTP + JSON con clave, y una página web para el móvil
-    (☰ Menú → Remoto). Desactivado por defecto; documentación en alfred_remoto_API.md
-
-Novedades de la 3.1.0 (inicio con Windows que sí arranca, diseño nuevo, manual al día):
-  • INICIO CON WINDOWS REPARADO: el registro guardaba la ruta exacta del archivo, así que al cambiar de versión
-    (alfred_2_x → 3_x) apuntaba a un archivo que ya no existía. Ahora Alfred lo repara solo al abrirse, quita las
-    entradas muertas de versiones viejas, reactiva la entrada si el Administrador de tareas la había desactivado,
-    espera a que Windows tenga barra de tareas y micrófono antes de arrancar, y avisa en la bandeja cuando ya escucha
-  • DISEÑO NUEVO: oscuro azulado con acentos cian, indicador HUD animado, tarjetas con borde fino y tipografía
-    Bahnschrift (si Windows la tiene); todas las ventanas comparten el mismo estilo
-  • MANUAL DE COMANDOS con buscador y secciones; «Mis comandos» ahora puede pulsar teclas, escribir texto y
-    ejecutar cualquier comando de Alfred (macros: «modo presentación» = cerrar notificaciones + captura + …)
-
-Novedades de la 3.0.0 (control total del PC solo con la voz):
-  • ENERGÍA: bloquear, suspender, hibernar, apagar, reiniciar, cerrar sesión (con «sí» de seguridad, 20 s para
-    cancelar), apagado programado, apagar solo la pantalla. Aviso por voz de batería baja
-  • VENTANAS Y TECLADO: cerrar / minimizar / maximizar / acomodar ventanas, cambiar a cualquier programa, cerrar
-    programas por nombre, escritorios virtuales, ~60 atajos hablados (copiar, pegar, guardar, pestañas, zoom…)
-  • ESCRIBIR POR VOZ: «escribe …» y MODO DICTADO (sin repetir mi nombre) con acentos, ñ y signos hablados
-  • RATÓN: clic, doble clic, clic derecho, desplazar, mover y CUADRÍCULA numerada para hacer clic en cualquier
-    punto de la pantalla sin tocar el ratón
-  • SISTEMA: capturas de pantalla, batería / CPU / memoria / disco / internet / Wi-Fi / IP, qué consume más,
-    ajustes de Windows, administrador de tareas, modo oscuro, portapapeles, papelera, Wi-Fi
-  • TIEMPO: temporizadores y alarmas persistentes, calculadora por voz
-  • RENDIMIENTO: menos CPU en reposo (la interfaz y el audio ya no hacen trabajo inútil), traducción y búsqueda
-    de órdenes en caché
-
-Novedades de la 2.9.0 (oír mejor, entender mejor, reconocer tu voz):
-  • PUERTA DE VOZ: el reconocedor (español + inglés) solo trabaja mientras hablas; en reposo no gasta CPU. Además
-    cierra cada frase al terminar de hablar, así el ruido de fondo continuo ya no deja a Alfred sin responder
-  • MODELO DE ALTA PRECISIÓN (opcional): Vosk grande en español (~1.4 GB), bastante más acertado que el pequeño. Se
-    descarga con permiso y se activa en ☰ Menú → Escucha. Si no carga (poca memoria) Alfred vuelve solo al normal
-  • RECONOCER TU VOZ (opcional): registras 5 frases y Alfred solo obedece a tu voz (huella de voz con el modelo
-    «spk» de Vosk, ~13 MB, sin librerías nuevas). Muestra la distancia en el registro para que ajustes la exigencia
-  • ENTENDER MEJOR (opcional): comprensión semántica offline (fastembed + MiniLM multilingüe): «no se escucha nada»
-    → sube el volumen, «está muy oscura la pantalla» → sube el brillo… Solo actúa si ninguna frase exacta coincide
-
-Novedades de la 2.8.1 (arreglo de «deja de detectar comandos sin razón»):
-  • VOZ ATASCADA: si la voz de Alfred se queda colgada (cambio de dispositivo de audio, Kokoro o SAPI sin responder),
-    antes Alfred se «oía a sí mismo» para siempre y descartaba todo tu audio. Ahora, a los 45 s, la da por perdida,
-    arranca otra y vuelve a escuchar (queda anotado en alfred.log)
-  • FRASES QUE NO TERMINAN: con ruido continuo Vosk no cierra la frase; ahora se fuerza el cierre cada 20 s
-  • RETRASO ACUMULADO: si el audio se atrasa más de 4 s se descarta lo viejo en vez de procesarlo tarde
-  • ERRORES EN UNA ORDEN: ya no tumban el micrófono (antes: 5 s sordo + reinicio de PortAudio)
-  • PortAudio ya no se reinicia mientras Alfred está hablando
-
-Novedades de la 2.8.0:
-  • KOKORO: ARREGLO DE LA CACHÉ: las frases de siempre de varias oraciones («Entendido. Minimizando todas las
-    ventanas.», «Apagando sistemas. Hasta pronto, señor.»…) se guardaban enteras pero al hablar se buscaban por
-    trozos, así que NUNCA acertaban y se generaban de nuevo cada vez (12 de las 76 frases, en español e inglés). Ahora
-    se guardan y se buscan por trozos: suenan al instante, también tras reiniciar Alfred (se guardan en disco)
-  • KOKORO: LA HORA Y LA FECHA YA ESTÁN LISTAS: en reposo Alfred deja generada la hora (este minuto y el siguiente) y
-    la fecha de hoy, en español y en inglés: «qué hora es» y «qué día es» suenan al instante (~1 generación por
-    minuto; se apaga en ☰ Menú → Voz). Las respuestas largas empiezan a sonar antes: el primer trozo se corta en su
-    última coma si pasa de 60 letras. alfred.log anota cuánto tarda en sonar lo que no estaba preparado
-  • RECONOCIMIENTO: «pausas», «recordatorio», «volumenes»… (singular/plural) ya se entienden; en inglés se toleran
-    muletillas («um what time is it»), palabras que suenan igual («paws» = pause, «moot» = mute, «a gender» = agenda)
-    y pequeños errores («volum up», «skips»); si venías hablando en inglés, un empate entre las dos lecturas se
-    resuelve a favor del inglés. Lo que viene tras «play», «search» o «remind me» (títulos, búsquedas, notas) no se toca
-  • MENÚ: sin cambios, ya vive dentro de la ventana de Alfred (☰ no abre otra ventana ni la minimiza)
-
-Novedades de la 2.7.0:
-  • ESPAÑOL E INGLÉS A LA VEZ: Alfred oye en los dos idiomas, elige la lectura que tiene sentido (usa las 3 mejores
-    interpretaciones de cada frase) y entiende las órdenes en inglés: «Alfred, what time is it», «play Numb by Linkin
-    Park», «volume to 40», «open Chrome»… Si le hablas en inglés, te contesta en inglés (voz Kokoro). El modelo de
-    inglés (~40 MB) se descarga con tu permiso. Se activa o desactiva en ☰ Menú → Voz
-  • PALABRA DE ACTIVACIÓN MÁS FIRME: reconoce también las formas que suenan parecido («alferd», «al fret»…)
-  • KOKORO SIN RETRASO: el modelo se queda cargado y calentado, las frases de siempre («Diga», «Entendido»…) se guardan ya
-    generadas y suenan al instante, el audio sale por un flujo único (sin archivos ni cortes) y las frases largas
-    empiezan a sonar antes. Opcional: modelo ligero de 88 MB (☰ Menú → Voz)
-  • MENÚ DENTRO DE LA VENTANA: ☰ abre un panel sobre la misma ventana de Alfred (no otra ventana). La ventana ya no se
-    minimiza, no cambia de tamaño (si está maximizada, sigue maximizada) y no pierde el foco
-
-Novedades de la 2.6.3:
-  • SEGUNDO PLANO: Alfred ya no pierde la escucha cuando su ventana está oculta (Windows lo ponía en «modo eficiencia»
-    y le recortaba CPU y temporizadores). Además tolera mejor los tirones del micrófono
-  • «Alfred muéstrate» ahora SÍ trae la ventana al frente aunque estés en otra aplicación, y entiende más formas
-    de pedirlo: «desminimízate», «maximízate», «restáurate», «muestra la ventana», «sal de la bandeja»…
-
-Novedades de la 2.6.2:
-  • MICRÓFONO MÁS SENSIBLE: Alfred amplifica tu voz automáticamente (ganancia automática) antes de reconocerla,
-    así ya no hace falta levantar la voz. Se ajusta en ☰ Menú → Voz → «Sensibilidad del micrófono»
-
-Novedades de la 2.6.1:
-  • Arreglo: reproductores que no leen listas .m3u8 (Harmonoid…) ya no abren «alfred_lista.m3u8» como si fuera una canción;
-    ahora reciben los archivos de música directamente
-
-Novedades de la 2.6:
-  • CANCIONES POR NOMBRE: «Alfred pon Numb», «reproduce Numb de Linkin Park», «pon la canción X». Busca en tus carpetas
-    de música (también FLAC), por nombre de archivo y de carpeta, entiende nombres en inglés por su sonido y sigue con el
-    resto del álbum. Prefiere el FLAC si tienes la misma canción en dos formatos
-  • «Abre X» (apps, webs y carpetas como Descargas) y «busca X en Google / YouTube»
-  • Arreglos: detener ≠ pausa, «más bajo / más alto», «baja la música», silencio/sonido, «cerrar» ya no apaga a Alfred,
-    más formas de pedir la hora y la fecha, y los comandos ya no se confunden con títulos de canciones
-
-Novedades de la 2.5:
-  • MÚSICA CON CUALQUIER REPRODUCTOR: detecta el que tengas abierto (VLC, foobar2000, MusicBee, AIMP, Spotify…) y lo
-    controla (pausa, siguiente, anterior). Reproduce carpetas por su nombre: «Alfred reproduce la carpeta rock»
-  • «Alfred pasa a segundo plano» (y «muéstrate» para volver); el nombre de la ventana sigue a la palabra de activación
-    («Jarvis OS»); la versión ahora se ve en ☰ Menú → Mantenimiento
-
-Novedades de la 2.4.3:
-  • VOZ KOKORO (offline, gratis, sin límites): Dora (mujer) y Alex (hombre), mucho más naturales que Piper.
-    Piper y la voz de Windows quedan como respaldo. Se elige en ☰ Menú → Voz
-
-Novedades de la 2.4:
-  • VOZ CON IA OFFLINE (Piper): voz neuronal natural, gratis, sin internet y sin límites de uso. Se descarga con tu
-    permiso; si no está, Alfred usa la voz de Windows. Se elige en ☰ Menú → Voz
-  • Interfaz nueva: indicador de estado animado, actividad ordenada por columnas con colores y filtros
-  • Barras de progreso animadas (sin porcentajes) para descargas e instalaciones
-
-Novedades de la 2.3:
-  • ☰ MENÚ con las opciones que sobran en la ventana principal (General, Voz, Aplausos, Mantenimiento)
-  • Todo lo que se instala pide PERMISO: componentes de Python, motor de voz y (con Iniciar_Alfred.bat) Python
-  • Iniciar_Alfred.bat: si el PC no tiene Python, pregunta y lo instala; luego abre Alfred
-
-Novedades de la 2.2:
-  • PALABRA DE ACTIVACIÓN PERSONALIZABLE (campo en la ventana; admite varias separadas por coma)
-  • Corrección: páginas web en navegador elegido (Opera GX) y comandos de usuario revisados de punta a punta
-
-Novedades de la 2.1 respecto a la 2.0:
-  • Voz robusta: SAPI directo → PowerShell (System.Speech) como respaldo, con avisos en la consola si falla
-  • Agenda: ventana propia (ver, añadir, borrar) + comandos de voz para leerla y mostrarla
-  • Ya no abre Claude ni ordena ventanas
-  • Busca solo dónde están instaladas las apps (registro, PATH, Menú Inicio, carpetas de programas, tienda)
-  • "Mis comandos": editor para crear comandos propios (abrir apps/webs/archivos, mover, copiar, eliminar,
-    decir, esperar) sin tocar código
-  • Doble aplauso rehecho: detecta transitorios de 10 ms (no confunde voz) y se puede calibrar con un botón
-
-Archivos que crea junto al script: alfred_config.json, comandos_usuario.json, recordatorios_alfred.txt, alfred.log
 """
 import os
 import sys
@@ -262,7 +118,7 @@ def _dir_voz_ia():
 PUERTO_INSTANCIA = 47653
 NOMBRE_REGISTRO = "Alfred_OS"
 SIN_VENTANA = 0x08000000  # CREATE_NO_WINDOW
-VERSION = "3.2.2"
+VERSION = "3.5.0"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -4297,6 +4153,14 @@ CONFIG_BASE = {
     "bateria_minima": 20,        # porcentaje a partir del cual avisa (a 10 % avisa otra vez)
     "idioma_dictado": "es",      # idioma del modo dictado: "es" o "en"
     "wifi_ultimo": "",           # última red Wi-Fi conectada (para «conecta el Wi-Fi»)
+    "burbuja_activa": True,       # 3.4: burbuja flotante cuando Alfred está en segundo plano
+    "burbuja_siempre": False,     # 3.4: mostrarla también con la ventana abierta
+    "burbuja_tam": 1.0,           # 3.4: 0.8 pequeña · 1.0 mediana · 1.25 grande
+    "burbuja_pos": None,          # 3.4: {"lado": "izq"|"der", "y": 0-1} (la guarda al arrastrarla)
+    "burbuja_modo_tk": False,     # 3.4: True = modo sencillo (si la transparencia por píxel diera problemas)
+    "remoto_id": "",              # 3.5: identificador de este PC (lo usa el móvil para reconocerlo si cambia de IP)
+    "remoto_dispositivos": [],    # 3.5: teléfonos vinculados [{id, nombre, creado, hash}] (solo el SHA-256 de su clave)
+    "remoto_avanzado": False,     # 3.5: permite teclado y ratón desde el móvil (menos seguro)
 }
 
 
@@ -5403,7 +5267,7 @@ class Voz:
                 with self._lock:
                     priv = texto in self._privados
                     self._privados.discard(texto)
-                self.gui.estado(f"🗣️ {dicho}")
+                self.gui.estado(f"🗣️ {dicho}", privado=priv)
                 self.gui.log(f"🗣️ {dicho}", privado=f"🗣️ [texto privado: {len(dicho)} caracteres]" if priv else None)
                 hablado = False
                 if usa_ia:
@@ -6630,7 +6494,7 @@ class ControlPC:
 #  únicamente direcciones privadas (Wi-Fi de casa, Tailscale…) y siempre exige la clave. Documentación:
 #  alfred_remoto_API.md
 # ══════════════════════════════════════════════════════════════════════════════
-API_REMOTA = 1
+API_REMOTA = 2
 _RED_TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
 
 
@@ -6693,6 +6557,382 @@ def ip_permitida(ip):
     return bool(a.is_loopback or a.is_private or a.is_link_local or (a.version == 4 and a in _RED_TAILSCALE))
 
 
+def ips_tailscale():
+    """Direcciones 100.x.y.z de Tailscale (si está instalado y conectado): permiten abrir el control remoto local
+    desde cualquier lugar a través de la red privada de Tailscale."""
+    ruta = os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), "Tailscale", "tailscale.exe")
+    if not os.path.exists(ruta):
+        return []
+    try:
+        r = subprocess.run([ruta, "ip", "-4"], capture_output=True, text=True, timeout=4,
+                           creationflags=0x08000000 if os.name == "nt" else 0)
+        return [x.strip() for x in r.stdout.splitlines() if x.strip().startswith("100.")]
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  3.5 · QUÉ SE PUEDE HACER DESDE EL MÓVIL
+#  La decisión se toma AQUÍ, en el PC, con cada orden que llega (no solo en la app): así un cliente modificado, o
+#  alguien que consiguiera una clave, tampoco puede saltarse los límites.
+#    libre      → se ejecuta
+#    confirmar  → el móvil pide un toque de confirmación (la API exige «confirmado»: true)
+#    avanzado   → solo si lo activas en ☰ Menú → Remoto → Avanzado (teclado y ratón a distancia)
+#    bloqueado  → nunca desde el móvil
+#  Un comando nuevo que no esté en esta tabla queda BLOQUEADO hasta que alguien lo clasifique.
+# ══════════════════════════════════════════════════════════════════════════════
+POLITICA_REMOTA = {
+    # música, sonido y pantalla
+    "cancion": "libre", "carpeta_musica": "libre", "que_suena": "libre", "media": "libre", "spotify": "libre",
+    "volumen": "libre", "silencio": "libre", "brillo": "libre", "pantalla": "libre", "captura": "libre", "tema": "libre",
+    # ventanas y aplicaciones
+    "ventana": "libre", "cambiar_a": "libre", "mostrar": "libre", "segundo_plano": "libre", "descanso": "libre",
+    "calculadora": "libre", "bloc": "libre", "explorador": "libre", "abrir": "libre", "buscar_web": "libre",
+    "configuracion": "libre", "herramientas": "libre", "cerrar": "confirmar",
+    # tiempo, notas e información
+    "recordar": "libre", "agenda": "libre", "temporizador": "libre", "calcular": "libre", "hora": "libre",
+    "fecha": "libre", "buenos_dias": "libre", "trabajo": "libre", "estado_pc": "libre", "portapapeles": "libre",
+    "papelera": "libre", "ayuda": "libre",
+    # energía y sesión
+    "bloquear": "libre", "cancelar_apagado": "libre", "suspender": "confirmar", "hibernar": "confirmar",
+    "apagar_pc": "bloqueado", "reiniciar_pc": "bloqueado", "cerrar_sesion": "bloqueado", "wifi": "bloqueado",
+    "salir": "bloqueado",
+    # teclado y ratón a distancia («atajo» y «raton» dependen de la frase: ver nivel_remoto)
+    "escribir": "avanzado", "atajo": "avanzado", "raton": "avanzado",
+    "dictado": "bloqueado", "cuadricula": "bloqueado",     # se manejan con la voz en el PC
+}
+
+CATEGORIA_REMOTA = {   # cómo los agrupa la app del móvil
+    "cancion": "Música y sonido", "carpeta_musica": "Música y sonido", "que_suena": "Música y sonido",
+    "media": "Música y sonido", "spotify": "Música y sonido", "volumen": "Música y sonido",
+    "silencio": "Música y sonido",
+    "brillo": "Pantalla", "pantalla": "Pantalla", "captura": "Pantalla", "tema": "Pantalla",
+    "ventana": "Ventanas y apps", "cambiar_a": "Ventanas y apps", "mostrar": "Ventanas y apps",
+    "segundo_plano": "Ventanas y apps", "descanso": "Ventanas y apps", "calculadora": "Ventanas y apps",
+    "bloc": "Ventanas y apps", "explorador": "Ventanas y apps", "abrir": "Ventanas y apps",
+    "buscar_web": "Ventanas y apps", "configuracion": "Ventanas y apps", "herramientas": "Ventanas y apps",
+    "cerrar": "Ventanas y apps",
+    "recordar": "Tiempo y notas", "agenda": "Tiempo y notas", "temporizador": "Tiempo y notas",
+    "calcular": "Tiempo y notas", "hora": "Tiempo y notas", "fecha": "Tiempo y notas",
+    "buenos_dias": "Tiempo y notas", "trabajo": "Tiempo y notas",
+    "estado_pc": "Estado del PC", "portapapeles": "Estado del PC", "papelera": "Estado del PC",
+    "ayuda": "Estado del PC",
+    "bloquear": "Energía y sesión", "cancelar_apagado": "Energía y sesión", "suspender": "Energía y sesión",
+    "hibernar": "Energía y sesión", "apagar_pc": "Energía y sesión", "reiniciar_pc": "Energía y sesión",
+    "cerrar_sesion": "Energía y sesión", "wifi": "Energía y sesión", "salir": "Energía y sesión",
+    "escribir": "Teclado y ratón", "atajo": "Teclado y ratón", "raton": "Teclado y ratón",
+    "dictado": "Teclado y ratón", "cuadricula": "Teclado y ratón",
+}
+
+# Con estas palabras en la orden NO se ejecuta desde el móvil, sea cual sea el comando (abrir una consola o el editor
+# del registro desde el móvil, junto con teclado remoto, equivaldría a ejecutar código).
+TERMINOS_NO_REMOTO = ("cmd", "powershell", "power shell", "simbolo del sistema", "consola de comandos",
+                      "linea de comandos", "terminal", "windows terminal", "regedit", "editor del registro",
+                      "wsl", "bash", "mshta", "wscript", "cscript", "rundll32")
+_FRASES_FUERZA = ("fuerza el cierre de", "fuerza el cierre", "mata el proceso de", "mata el proceso", "mata",
+                  "termina el proceso de", "finaliza el proceso de")
+_PALABRAS_RATON = {"clic", "click", "doble", "mueve", "mouse", "raton", "cursor", "puntero", "centra", "izquierdo",
+                   "derecho"}
+# Atajos de teclado que sirven para manejar vídeo, páginas y presentaciones sin tocar nada: se permiten siempre.
+_ATAJOS_SEGUROS = {(("space",),), (("up",),), (("down",),), (("left",),), (("right",),), (("pagedown",),),
+                   (("pageup",),), (("esc",),), (("f11",),), (("ctrl", "="),), (("ctrl", "-"),), (("ctrl", "0"),),
+                   (("f5",),), (("alt", "left"),), (("alt", "right"),), (("ctrl", "tab"),),
+                   (("ctrl", "shift", "tab"),), (("ctrl", "home"),), (("ctrl", "end"),)}
+
+MOTIVO_REMOTO = {
+    "apagar_pc": "Apagar el PC solo se puede hacer desde el propio PC (por seguridad).",
+    "reiniciar_pc": "Reiniciar el PC solo se puede hacer desde el propio PC (por seguridad).",
+    "cerrar_sesion": "Cerrar la sesión solo se puede hacer desde el propio PC (por seguridad).",
+    "wifi": "Desconectar el Wi-Fi te dejaría sin conexión con el PC.",
+    "salir": "Cerrar Alfred solo se puede hacer desde el propio PC.",
+    "dictado": "El modo dictado solo se usa con la voz, en el PC.",
+    "cuadricula": "La cuadrícula del ratón solo se usa con la voz, en el PC.",
+    "papelera": "Vaciar la papelera solo se puede hacer desde el propio PC.",
+    "cerrar": "Forzar el cierre de un programa, o cerrar a Alfred, solo se puede hacer desde el propio PC.",
+}
+PREGUNTA_REMOTA = {
+    "suspender": "¿Suspender el PC? No podrás volver a conectarte hasta que lo despiertes.",
+    "hibernar": "¿Hibernar el PC? No podrás volver a conectarte hasta que lo vuelvas a encender.",
+    "cerrar": "¿Cerrar ese programa o ventana? Puedes perder lo que no hayas guardado.",
+}
+MENSAJE_AVANZADO = ("Teclado y ratón desde el móvil está desactivado. Para usarlo actívalo en el PC: "
+                    "☰ Menú → Remoto → Avanzado.")
+MENSAJE_CONSOLAS = "Las consolas (cmd, PowerShell) y el editor del registro solo se abren desde el propio PC."
+
+
+def nivel_remoto(cid, norm, nombre=""):
+    """(nivel, motivo) de una orden que llega del móvil. «norm» es la orden ya normalizada; «nombre», el del asistente."""
+    texto = f" {norm} "
+    if any(f" {t} " in texto for t in TERMINOS_NO_REMOTO):
+        return "bloqueado", MENSAJE_CONSOLAS
+    nivel = POLITICA_REMOTA.get(cid, "bloqueado")
+    n = nucleo_orden(norm)
+    toks = set(n.split())
+    if cid == "atajo":
+        seq = _ATAJO_POR_FRASE.get(n)
+        seq = tuple(tuple(c) for c in seq) if seq else None
+        if seq == (("win", "r"),):
+            nivel = "bloqueado"                                   # «Ejecutar» de Windows: nunca desde el móvil
+        else:
+            nivel = "libre" if seq in _ATAJOS_SEGUROS else "avanzado"
+    elif cid == "raton":
+        nivel = "avanzado" if toks & _PALABRAS_RATON else "libre"      # solo desplazar la página es libre
+    elif cid == "cerrar":
+        suyo = normalizar(nombre) if nombre else ""
+        if any(n == f or n.startswith(f + " ") for f in _FRASES_FUERZA) or toks & {"alfred", "asistente"} \
+                or (suyo and suyo in toks):
+            nivel = "bloqueado"
+    elif cid == "papelera" and toks & {"vacia", "vaciar", "limpia", "limpiar"}:
+        nivel = "bloqueado"
+    return nivel, (MOTIVO_REMOTO.get(cid) if nivel == "bloqueado" else None)
+
+
+def nivel_personalizado(cmd):
+    """Nivel remoto de un comando del usuario («Mis comandos»): lo más restrictivo de sus acciones."""
+    nivel = "libre"
+    for a in cmd.get("acciones") or []:
+        t = a.get("tipo")
+        v = normalizar(str(a.get("valor") or ""))
+        if t == "eliminar":
+            return "bloqueado"
+        if any(f" {x} " in f" {v} " for x in TERMINOS_NO_REMOTO):
+            return "bloqueado"
+        if t in ("mover", "copiar", "teclas", "escribir"):
+            nivel = "confirmar"
+        elif t == "comando":
+            interno = buscar_comando(v)
+            if interno is not None:
+                n_i = POLITICA_REMOTA.get(interno["id"], "bloqueado")
+                if n_i in ("bloqueado", "avanzado"):
+                    return "bloqueado"
+                if n_i == "confirmar":
+                    nivel = "confirmar"
+    return nivel
+
+
+def estado_tailscale():
+    """('ok', ip) | ('apagado', None) | ('no_instalado', None): permite usar Alfred fuera de casa sin abrir puertos."""
+    ruta = os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"), "Tailscale", "tailscale.exe")
+    if not os.path.exists(ruta):
+        return "no_instalado", None
+    ips = ips_tailscale()
+    return ("ok", ips[0]) if ips else ("apagado", None)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  3.5 · CÓDIGO QR (sin librerías): sirve para vincular el teléfono escaneando desde la app
+#  Modo byte, corrección de errores M, versiones 1 a 14 (hasta 362 bytes). Se validó descodificándolo con OpenCV.
+# ══════════════════════════════════════════════════════════════════════════════
+_QR_M = {   # versión: (bytes de corrección por bloque, [(nº de bloques, bytes de datos por bloque), ...])
+    1: (10, [(1, 16)]), 2: (16, [(1, 28)]), 3: (26, [(1, 44)]), 4: (18, [(2, 32)]), 5: (24, [(2, 43)]),
+    6: (16, [(4, 27)]), 7: (18, [(4, 31)]), 8: (22, [(2, 38), (2, 39)]), 9: (22, [(3, 36), (2, 37)]),
+    10: (26, [(4, 43), (1, 44)]), 11: (30, [(1, 50), (4, 51)]), 12: (22, [(6, 36), (2, 37)]),
+    13: (22, [(8, 37), (1, 38)]), 14: (24, [(4, 40), (5, 41)]),
+}
+_QR_ALINEACION = {1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42],
+                  9: [6, 26, 46], 10: [6, 28, 50], 11: [6, 30, 54], 12: [6, 32, 58], 13: [6, 34, 62],
+                  14: [6, 26, 46, 66]}
+_QR_EXP, _QR_LOG = [0] * 512, [0] * 256
+
+
+def _qr_tablas():
+    x = 1
+    for i in range(255):
+        _QR_EXP[i] = x
+        _QR_LOG[x] = i
+        x <<= 1
+        if x & 0x100:
+            x ^= 0x11D
+    for i in range(255, 512):
+        _QR_EXP[i] = _QR_EXP[i - 255]
+
+
+_qr_tablas()
+
+
+def _qr_mul(a, b):
+    return 0 if (a == 0 or b == 0) else _QR_EXP[_QR_LOG[a] + _QR_LOG[b]]
+
+
+def _qr_correccion(datos, n):
+    """Bytes de corrección Reed-Solomon (n) de una lista de bytes."""
+    gen = [1]
+    for i in range(n):
+        nuevo = [0] * (len(gen) + 1)
+        for j, c in enumerate(gen):
+            nuevo[j] ^= c
+            nuevo[j + 1] ^= _qr_mul(c, _QR_EXP[i])
+        gen = nuevo
+    resto = [0] * n
+    for b in datos:
+        f = b ^ resto[0]
+        resto = resto[1:] + [0]
+        if f:
+            for i in range(n):
+                resto[i] ^= _qr_mul(gen[i + 1], f)
+    return resto
+
+
+def _qr_capacidad(version):
+    _, bloques = _QR_M[version]
+    datos = sum(n * d for n, d in bloques)
+    return datos - (2 if version < 10 else 3)         # modo (4 bits) + longitud (8 o 16 bits)
+
+
+def _qr_palabras(datos, version):
+    """Datos + corrección, intercalados, listos para colocar en la matriz."""
+    ec, bloques = _QR_M[version]
+    total = sum(n * d for n, d in bloques)
+    bits = "0100" + format(len(datos), "08b" if version < 10 else "016b") + "".join(format(b, "08b") for b in datos)
+    bits += "0" * min(4, total * 8 - len(bits))
+    bits += "0" * (-len(bits) % 8)
+    pal = [int(bits[i:i + 8], 2) for i in range(0, len(bits), 8)]
+    relleno = (0xEC, 0x11)
+    while len(pal) < total:
+        pal.append(relleno[(len(pal) - len(bits) // 8) % 2])
+    partes, pos = [], 0
+    for n, d in bloques:
+        for _ in range(n):
+            partes.append(pal[pos:pos + d])
+            pos += d
+    correcciones = [_qr_correccion(p, ec) for p in partes]
+    salida = []
+    for i in range(max(len(p) for p in partes)):
+        for p in partes:
+            if i < len(p):
+                salida.append(p[i])
+    for i in range(ec):
+        for c in correcciones:
+            salida.append(c[i])
+    return salida
+
+
+def _qr_formato(mascara):
+    d = (0 << 3) | mascara                              # nivel M = 00
+    r = d << 10
+    for i in range(14, 9, -1):
+        if r & (1 << i):
+            r ^= 0x537 << (i - 10)
+    return ((d << 10) | r) ^ 0x5412
+
+
+def _qr_penalizacion(m):
+    n = len(m)
+    p = 0
+    for filas in (m, [list(c) for c in zip(*m)]):        # filas y columnas
+        for f in filas:
+            racha = 1
+            for i in range(1, n):
+                if f[i] == f[i - 1]:
+                    racha += 1
+                else:
+                    if racha >= 5:
+                        p += 3 + racha - 5
+                    racha = 1
+            if racha >= 5:
+                p += 3 + racha - 5
+            for i in range(n - 10):
+                v = f[i:i + 11]
+                if v == [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0] or v == [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1]:
+                    p += 40
+    for r in range(n - 1):
+        for c in range(n - 1):
+            if m[r][c] == m[r][c + 1] == m[r + 1][c] == m[r + 1][c + 1]:
+                p += 3
+    oscuros = sum(sum(f) for f in m)
+    p += 10 * int(abs(oscuros * 100 / (n * n) - 50) / 5)
+    return p
+
+
+def generar_qr(texto):
+    """Matriz de un código QR (lista de filas con 1 = módulo oscuro) para el texto. ValueError si no cabe."""
+    datos = texto.encode("utf-8")
+    version = next((v for v in sorted(_QR_M) if _qr_capacidad(v) >= len(datos)), None)
+    if version is None:
+        raise ValueError("el texto es demasiado largo para el QR")
+    n = 17 + 4 * version
+    m = [[None] * n for _ in range(n)]
+    for r0, c0 in ((0, 0), (0, n - 7), (n - 7, 0)):      # buscadores + separadores
+        for dr in range(-1, 8):
+            for dc in range(-1, 8):
+                r, c = r0 + dr, c0 + dc
+                if 0 <= r < n and 0 <= c < n:
+                    if 0 <= dr <= 6 and 0 <= dc <= 6:
+                        m[r][c] = int(dr in (0, 6) or dc in (0, 6) or (2 <= dr <= 4 and 2 <= dc <= 4))
+                    else:
+                        m[r][c] = 0
+    for i in range(8, n - 8):                            # sincronización
+        m[6][i] = m[i][6] = int(i % 2 == 0)
+    pos = _QR_ALINEACION[version]
+    for r in pos:
+        for c in pos:
+            if (r == 6 and c == 6) or (r == 6 and c == pos[-1]) or (r == pos[-1] and c == 6):
+                continue
+            for dr in range(-2, 3):
+                for dc in range(-2, 3):
+                    m[r + dr][c + dc] = int(max(abs(dr), abs(dc)) != 1)
+    m[n - 8][8] = 1                                      # módulo oscuro fijo
+    for i in range(9):                                   # zonas del formato (se rellenan después)
+        for r, c in ((8, i), (i, 8)):
+            if m[r][c] is None:
+                m[r][c] = 0
+    for i in range(8):
+        for r, c in ((8, n - 1 - i), (n - 1 - i, 8)):
+            if m[r][c] is None:
+                m[r][c] = 0
+    if version >= 7:                                     # versión (solo desde la 7)
+        rem = version
+        for _ in range(12):
+            rem = (rem << 1) ^ ((rem >> 11) * 0x1F25)
+        bits = (version << 12) | rem
+        for i in range(18):
+            a, b = n - 11 + i % 3, i // 3
+            v = (bits >> i) & 1
+            m[b][a] = v
+            m[a][b] = v
+    libre = [[m[r][c] is None for c in range(n)] for r in range(n)]
+    bits = "".join(format(b, "08b") for b in _qr_palabras(datos, version))
+    k, c, arriba = 0, n - 1, True
+    while c > 0:
+        if c == 6:
+            c -= 1
+        for r in (range(n - 1, -1, -1) if arriba else range(n)):
+            for cc in (c, c - 1):
+                if libre[r][cc]:
+                    m[r][cc] = int(bits[k]) if k < len(bits) else 0
+                    k += 1
+        arriba = not arriba
+        c -= 2
+    mascaras = (lambda i, j: (i + j) % 2 == 0, lambda i, j: i % 2 == 0, lambda i, j: j % 3 == 0,
+                lambda i, j: (i + j) % 3 == 0, lambda i, j: (i // 2 + j // 3) % 2 == 0,
+                lambda i, j: (i * j) % 2 + (i * j) % 3 == 0, lambda i, j: ((i * j) % 2 + (i * j) % 3) % 2 == 0,
+                lambda i, j: ((i + j) % 2 + (i * j) % 3) % 2 == 0)
+    mejor, mejor_p = None, None
+    for q, cond in enumerate(mascaras):
+        t = [fila[:] for fila in m]
+        for r in range(n):
+            for cc in range(n):
+                if libre[r][cc] and cond(r, cc):
+                    t[r][cc] ^= 1
+        f = _qr_formato(q)
+        for i in range(6):
+            t[i][8] = (f >> i) & 1
+        t[7][8] = (f >> 6) & 1
+        t[8][8] = (f >> 7) & 1
+        t[8][7] = (f >> 8) & 1
+        for i in range(9, 15):
+            t[8][14 - i] = (f >> i) & 1
+        for i in range(8):
+            t[8][n - 1 - i] = (f >> i) & 1
+        for i in range(8, 15):
+            t[n - 15 + i][8] = (f >> i) & 1
+        t[n - 8][8] = 1
+        p = _qr_penalizacion(t)
+        if mejor_p is None or p < mejor_p:
+            mejor, mejor_p = t, p
+    return mejor
+
+
 class _ServidorHTTP(ThreadingHTTPServer):
     allow_reuse_address = False          # en Windows SO_REUSEADDR deja que otro programa se cuele en el mismo puerto
     daemon_threads = True
@@ -6730,20 +6970,23 @@ let ultimo=0,vivo=true;
 localStorage.removeItem('alfred_t');
 async function abrirSesion(t){const r=await fetch('/api/sesion',{method:'POST',headers:{'Authorization':'Bearer '+t,'X-Alfred-Req':'1'}});return r.ok}
 const h=new URLSearchParams(location.hash.slice(1));
-if(h.get('t')){const t=h.get('t');history.replaceState(null,'',location.pathname);abrirSesion(t).then(ok=>{if(!ok)pedirClave()})}
 const BOTONES=[['⏸','pausa'],['▶️','dale play'],['⏮','canción anterior'],['⏭','siguiente canción'],['🔉','baja el volumen'],['🔊','sube el volumen'],['🔇','silencio'],['🎵','qué suena'],['🕒','qué hora es'],['📸','captura de pantalla'],['🔒','bloquea la pantalla'],['✅','sí']];
 BOTONES.forEach(([ico,ord])=>{const b=document.createElement('button');b.textContent=ico;b.title=ord;b.onclick=()=>enviar(ord);$('#botones').append(b)});
 async function api(ruta,cuerpo){
   const r=await fetch(ruta,{method:cuerpo?'POST':'GET',credentials:'same-origin',headers:{'X-Alfred-Req':'1','Content-Type':'application/json'},body:cuerpo?JSON.stringify(cuerpo):undefined});
   if(r.status===401){pedirClave();throw new Error('clave')}
-  if(!r.ok)throw new Error('http '+r.status);return r.json()}
-function pedirClave(){const c=prompt('Clave de acceso (☰ Menú → Remoto en el PC):');if(c){abrirSesion(c.trim()).then(ok=>{ultimo=0;if(!ok)alert('Clave incorrecta')})}}
-$('#otra').onclick=()=>{pedirClave()};
+  if(!r.ok){let m='http '+r.status,es='';try{const j=await r.json();m=j.error||j.mensaje||m;es=j.estado||''}catch(e){}throw Object.assign(new Error(m),{estado:es})}
+  return r.json()}
+let ultPedido=0;
+function pedirClave(forzar){if(!forzar&&Date.now()-ultPedido<30000)return;const c=prompt('Clave de acceso (☰ Menú → Remoto en el PC):');ultPedido=Date.now();if(c){abrirSesion(c.trim()).then(ok=>{ultimo=0;if(!ok)alert('Clave incorrecta')})}}
+$('#otra').onclick=()=>{pedirClave(true)};
 function pintar(lista){const f=$('#feed'),abajo=f.scrollTop+f.clientHeight>=f.scrollHeight-40;
   for(const e of lista){const d=document.createElement('div');d.className='e '+e.tipo;const h=document.createElement('b');h.textContent=e.hora;d.append(h,document.createTextNode(e.texto));f.append(d);ultimo=Math.max(ultimo,e.id)}
   while(f.children.length>300)f.firstChild.remove();if(abajo)f.scrollTop=f.scrollHeight}
-async function enviar(texto){texto=(texto||'').trim();if(!texto)return;
-  try{const d=await api('/api/orden',{texto,espera:4});pintar(d.eventos||[])}catch(e){pintar([{id:ultimo,hora:'',tipo:'aviso',texto:'No pude enviar: '+e.message}])}}
+async function enviar(texto,conf){texto=(texto||'').trim();if(!texto)return;
+  try{const d=await api('/api/orden',{texto,espera:4,confirmado:!!conf});pintar(d.eventos||[])}
+  catch(e){if(e.estado==='confirmar'){if(confirm(e.message))return enviar(texto,true);return}
+    pintar([{id:ultimo,hora:'',tipo:'aviso',texto:e.estado==='bloqueado'?e.message:'No pude enviar: '+e.message}])}}
 $('#f').onsubmit=e=>{e.preventDefault();const v=$('#t').value;$('#t').value='';enviar(v)};
 async function estado(){try{const s=await api('/api/estado');$('#nombre').textContent=s.nombre+' OS';
   $('#sub').textContent=(s.escuchando?'escuchando':'sin micrófono')+' · v'+s.version;$('#punto').style.color=$('#punto').style.background=s.escuchando?'var(--ok)':'var(--wa)'}
@@ -6751,7 +6994,9 @@ async function estado(){try{const s=await api('/api/estado');$('#nombre').textCo
 async function bucle(){while(vivo){try{
   const d=await api('/api/eventos?desde='+ultimo+'&espera=20'+(ultimo?'':'&ultimos=40'));pintar(d.eventos||[]);if(!d.eventos.length)ultimo=Math.max(ultimo,d.ultimo)
   }catch(e){await new Promise(r=>setTimeout(r,3000))}}}
-if(!T)pedirClave();estado();setInterval(estado,10000);bucle();
+(async()=>{const t=h.get('t');
+  if(t){history.replaceState(null,'',location.pathname);const ok=await abrirSesion(t);if(!ok)pedirClave(true)}
+  estado();setInterval(estado,10000);bucle()})();
 </script></body></html>"""
 
 
@@ -6842,15 +7087,20 @@ class _ManejadorRemoto(BaseHTTPRequestHandler):
         fallido (una cookie caducada no bloquea al navegador)."""
         ctl = self.server.ctl
         clave = self._clave_cabecera()
+        self._quien = None
         if clave:
-            if ctl.clave_valida(clave):
+            quien = ctl.quien(clave)                       # «maestra» (la del enlace web) o el id de un teléfono
+            if quien:
+                self._quien = quien
                 ctl.acierto(ip)
+                ctl.visto(quien)
                 return True
             ctl.fallo(ip)
         elif not solo_clave and ctl.sesion_valida(self._cookie_sesion()):
             if self.command == "POST" and not self._origen_ok():
                 self._enviar(403, {"ok": False, "error": "origen no permitido"})
                 return False
+            self._quien = "sesion"
             return True
         self._enviar(401, {"ok": False, "error": "clave incorrecta"})
         return False
@@ -6895,17 +7145,17 @@ class _ManejadorRemoto(BaseHTTPRequestHandler):
                 html = PAGINA_REMOTA.replace("__NOMBRE__", ctl.alfred.gui.nombre_os().replace("<", ""))
                 return self._enviar(200, html.encode("utf-8"), "text/html; charset=utf-8")
             if ruta == "/api/ping":                          # sirve para comprobar que es un Alfred (sin datos)
-                return self._enviar(200, {"app": "alfred", "api": API_REMOTA})
+                return self._enviar(200, {"app": "alfred", "api": API_REMOTA, "id": ctl.id_pc()})
             if not ruta.startswith("/api/"):
                 return self._enviar(404, {"ok": False, "error": "no existe"})
             if not self._autenticar(ip):
                 return
             if ruta == "/api/estado":
-                return self._enviar(200, ctl.estado())
+                info = ctl.estado()
+                info["dispositivo"] = None if self._quien in (None, "maestra", "sesion") else self._quien
+                return self._enviar(200, info)
             if ruta == "/api/comandos":
-                return self._enviar(200, {"comandos": [
-                    {"id": c["id"], "ejemplo": c.get("ejemplo", ""), "descripcion": c.get("desc", ""),
-                     "seccion": c.get("seccion", "")} for c in COMANDOS]})
+                return self._enviar(200, {"comandos": ctl.catalogo(), "personalizados": ctl.catalogo_personalizados()})
             if ruta == "/api/eventos":
                 desde = int(self._numero((q.get("desde") or ["0"])[0], 0, 0, 10 ** 12))
                 espera = self._numero((q.get("espera") or ["0"])[0], 0, 0, 25)
@@ -6939,6 +7189,24 @@ class _ManejadorRemoto(BaseHTTPRequestHandler):
                 ctl.cerrar_sesion(self._cookie_sesion())
                 self._cookie = "alfred_s=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"
                 return self._enviar(200, {"ok": True})
+            if ruta == "/api/vincular":                      # 3.5: el teléfono demuestra que vio el QR (aún no tiene clave)
+                d = self._cuerpo()
+                disp, error = ctl.vincular(str(d.get("nombre") or ""), str(d.get("nonce") or ""),
+                                           str(d.get("prueba") or ""))
+                if disp is None:
+                    if error == "el código no coincide":
+                        ctl.fallo(ip)                                # adivinar el código cuenta como clave incorrecta
+                    return self._enviar(403, {"ok": False, "error": error})
+                ctl.acierto(ip)
+                return self._enviar(200, {"ok": True, "id": disp["id"], "pc": ctl.nombre_pc(), "id_pc": ctl.id_pc(),
+                                          "rutas": ctl.rutas()})
+            if ruta == "/api/desvincular":                   # 3.5: «Olvidar este PC» desde la app
+                if not self._autenticar(ip, solo_clave=True):
+                    return
+                if self._quien in (None, "maestra", "sesion"):
+                    return self._enviar(400, {"ok": False, "error": "solo un teléfono vinculado puede desvincularse"})
+                ctl.quitar_dispositivo(self._quien)
+                return self._enviar(200, {"ok": True})
             if not self._autenticar(ip):
                 return
             d = self._cuerpo()
@@ -6948,8 +7216,13 @@ class _ManejadorRemoto(BaseHTTPRequestHandler):
                     return self._enviar(400, {"ok": False, "error": "falta «texto»"})
                 espera = self._numero(d.get("espera"), 4, 0, 15)
                 desde = BUS.ultimo
-                ctl.ejecutar(texto)
-                return self._enviar(200, {"ok": True, "eventos": ctl.recoger(desde, espera), "ultimo": BUS.ultimo})
+                v = ctl.ejecutar(texto, d.get("confirmado") is True)
+                if v["estado"] == "bloqueado":
+                    return self._enviar(403, {"ok": False, "estado": "bloqueado", "error": v["mensaje"], "id": v["id"]})
+                if v["estado"] == "confirmar":
+                    return self._enviar(409, {"ok": False, "estado": "confirmar", "mensaje": v["mensaje"], "id": v["id"]})
+                return self._enviar(200, {"ok": True, "estado": v["estado"], "id": v["id"],
+                                          "eventos": ctl.recoger(desde, espera), "ultimo": BUS.ultimo})
             if ruta == "/api/decir":
                 if not texto:
                     return self._enviar(400, {"ok": False, "error": "falta «texto»"})
@@ -6970,6 +7243,8 @@ class ServidorRemoto:
         self._fallos = {}                                  # ip -> (fallos seguidos, bloqueada hasta)
         self._lock = threading.Lock()
         self._sesiones = {}                                # id de sesión (cookie) -> caduca; solo en memoria
+        self._vinculo = None                               # 3.5: código de vinculación en curso {c, exp, fallos}
+        self._visto = {}                                   # 3.5: id de teléfono -> última vez que habló (solo memoria)
 
     # ── clave ────────────────────────────────────────────────────────────────
     def token(self):
@@ -7014,7 +7289,112 @@ class ServidorRemoto:
         return self.token()
 
     def clave_valida(self, candidata):
-        return bool(candidata) and hmac.compare_digest(str(candidata).encode("utf-8"), self.token().encode("utf-8"))
+        return bool(self.quien(candidata))
+
+    # ── 3.5 · teléfonos vinculados ───────────────────────────────────────────
+    def id_pc(self):
+        i = self.cfg.get("remoto_id")
+        if not i:
+            i = secrets.token_hex(6)
+            self.cfg.set("remoto_id", i)
+        return i
+
+    @staticmethod
+    def nombre_pc():
+        try:
+            return socket.gethostname()[:40] or "PC"
+        except OSError:
+            return "PC"
+
+    def dispositivos(self):
+        """[{id, nombre, creado}] de los teléfonos vinculados. De su clave solo se guarda un resumen SHA-256."""
+        return [dict(d) for d in (self.cfg.get("remoto_dispositivos") or []) if isinstance(d, dict)]
+
+    def visto_hace(self, id_disp):
+        t = self._visto.get(id_disp)
+        return None if t is None else time.time() - t
+
+    def visto(self, quien):
+        if quien and quien not in ("maestra", "sesion"):
+            self._visto[quien] = time.time()
+
+    def quien(self, candidata):
+        """Dueño de una clave: «maestra» (la del enlace web), el id de un teléfono vinculado, o None."""
+        if not candidata:
+            return None
+        crudo = str(candidata).encode("utf-8")
+        if hmac.compare_digest(crudo, self.token().encode("utf-8")):
+            return "maestra"
+        h = hashlib.sha256(crudo).hexdigest().encode("ascii")
+        res = None
+        for d in self.dispositivos():                      # sin salir al primer acierto: el tiempo no delata cuál era
+            if hmac.compare_digest(h, str(d.get("hash", "")).encode("ascii", "ignore")):
+                res = d.get("id")
+        return res
+
+    def nuevo_vinculo(self):
+        """Código de un solo uso (10 min) que va dentro del QR. Sustituye al anterior."""
+        with self._lock:
+            self._vinculo = {"c": secrets.token_urlsafe(16), "exp": time.time() + 600, "fallos": 0}
+            return self._vinculo["c"]
+
+    def cancelar_vinculo(self):
+        with self._lock:
+            self._vinculo = None
+
+    def vinculo_restante(self):
+        with self._lock:
+            v = self._vinculo
+            return max(0, int(v["exp"] - time.time())) if v else 0
+
+    def enlace_vinculo(self, codigo):
+        """Lo que lleva el QR: alfred://v2?c=CÓDIGO&n=NOMBRE&h=IP:PUERTO&h=IP:PUERTO…"""
+        partes = [("c", codigo), ("n", self.nombre_pc())] + [("h", r) for r in self.rutas()]
+        return "alfred://v2?" + "&".join(f"{k}={quote(str(v), safe=':.-_')}" for k, v in partes)
+
+    def vincular(self, nombre, nonce, prueba):
+        """El teléfono demuestra que vio el QR con un HMAC hecho con el código, que nunca viaja por la red. La clave del
+        teléfono tampoco viaja: ambos lados la derivan del código. → (dispositivo | None, mensaje de error)."""
+        if not (1 <= len(nombre) <= 60) or not re.fullmatch(r"[0-9a-f]{16,64}", nonce or ""):
+            return None, "datos de vinculación no válidos"
+        with self._lock:
+            v = self._vinculo
+            if not v or time.time() > v["exp"]:
+                self._vinculo = None
+                return None, "el código caducó: pulsa «Vincular teléfono» otra vez en el PC"
+            clave = v["c"].encode("utf-8")
+            esperado = hmac.new(clave, f"prueba|{nonce}|{nombre}".encode("utf-8"), hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(esperado.encode("ascii"), str(prueba or "").encode("utf-8")):
+                v["fallos"] += 1
+                if v["fallos"] >= 5:
+                    self._vinculo = None                      # 5 intentos malos: el código se quema
+                return None, "el código no coincide"
+            self._vinculo = None                              # un solo uso
+            token = hmac.new(clave, f"token|{nonce}|{nombre}".encode("utf-8"), hashlib.sha256).hexdigest()
+        disp = {"id": secrets.token_hex(4), "nombre": re.sub(r"[^\w .\-()]", "", nombre).strip()[:40] or "Teléfono",
+                "creado": int(time.time()), "hash": hashlib.sha256(token.encode("utf-8")).hexdigest()}
+        self.cfg.set("remoto_dispositivos", (self.dispositivos() + [disp])[-20:])
+        self._visto[disp["id"]] = time.time()
+        self.alfred.gui.log(f"📱 Teléfono vinculado: {disp['nombre']}")
+        return disp, None
+
+    def quitar_dispositivo(self, id_disp):
+        lista = self.dispositivos()
+        resto = [d for d in lista if d.get("id") != id_disp]
+        if len(resto) != len(lista):
+            self.cfg.set("remoto_dispositivos", resto)
+            nombre = next((d.get("nombre") for d in lista if d.get("id") == id_disp), "")
+            self.alfred.gui.log(f"📱 Teléfono desvinculado: {nombre}")
+        self._visto.pop(id_disp, None)
+        with self._lock:
+            self._sesiones.clear()                          # sus sesiones abiertas dejan de valer
+
+    def quitar_todos(self):
+        self.cfg.set("remoto_dispositivos", [])
+        self._visto.clear()
+        with self._lock:
+            self._sesiones.clear()
+        self.alfred.gui.log("📱 Todos los teléfonos desvinculados.")
 
     def bloqueado(self, ip):
         with self._lock:
@@ -7094,6 +7474,10 @@ class ServidorRemoto:
         esquema, t = ("https" if self.https else "http"), self.token()
         if not self._lan:
             return [f"{esquema}://127.0.0.1:{self.puerto}/#t={t}"]
+        return [f"{esquema}://{ip}:{self.puerto}/#t={t}" for ip in self._ips()]      # en el # (fragmento): no viaja ni se registra
+
+    def _ips(self):
+        """Direcciones de este PC: la de salida, las de otras tarjetas y la de Tailscale (si está activo)."""
         ips = []
         principal = ip_local()
         if principal:
@@ -7104,14 +7488,39 @@ class ServidorRemoto:
                     ips.append(i)
         except OSError:
             pass
-        return [f"{esquema}://{ip}:{self.puerto}/#t={t}" for ip in ips]      # en el # (fragmento): no viaja ni se registra
+        for i in ips_tailscale():
+            if i not in ips:
+                ips.append(i)
+        return ips
+
+    def rutas(self):
+        """«IP:puerto» por las que el teléfono puede llegar a este PC (vacío si el control remoto no está en la red)."""
+        if not self.srv or not self._lan:
+            return []
+        esq = "https://" if self.https else ""
+        return [f"{esq}{ip}:{self.puerto}" for ip in self._ips()]
+
+    # ── 3.5 · lo que ve la app: estado y catálogo de comandos con sus límites ─
+    def catalogo(self):
+        res = []
+        for c in COMANDOS:
+            cid = c["id"]
+            nivel = "parcial" if cid in ("atajo", "raton") else POLITICA_REMOTA.get(cid, "bloqueado")
+            res.append({"id": cid, "ejemplo": c.get("ejemplo", ""), "descripcion": c.get("desc", ""),
+                        "seccion": c.get("seccion", ""), "categoria": CATEGORIA_REMOTA.get(cid, "Otros"),
+                        "remoto": nivel})
+        return res
+
+    def catalogo_personalizados(self):
+        return [{"frase": c["frase"], "remoto": nivel_personalizado(c)} for c in self.alfred.personalizados]
 
     # ── lo que hace la API ───────────────────────────────────────────────────
     def estado(self):
         a = self.alfred
         info = {"app": "alfred", "api": API_REMOTA, "nombre": a.nombre, "version": VERSION, "escuchando": bool(a.escuchando),
                 "idioma": a.voz.idioma_actual(), "dictado": bool(a.dictado), "hora": time.strftime("%H:%M:%S"),
-                "reproductor": None}
+                "reproductor": None, "pc": self.nombre_pc(), "id_pc": self.id_pc(), "rutas": self.rutas(),
+                "avanzado": bool(self.cfg.get("remoto_avanzado"))}
         try:
             p = a.reproductor_activo()
             if p:
@@ -7120,9 +7529,10 @@ class ServidorRemoto:
             pass
         return info
 
-    def ejecutar(self, texto):
-        """Ejecuta una orden escrita como si la hubieras dicho (sin palabra de activación)."""
-        self.alfred.procesar_remoto(texto)
+    def ejecutar(self, texto, confirmado=False):
+        """Ejecuta una orden escrita como si la hubieras dicho (sin palabra de activación), si los límites lo permiten.
+        Devuelve el veredicto: {"estado": "ok" | "bloqueado" | "confirmar" | "desconocido" | "vacio", "mensaje", "id"}."""
+        return self.alfred.procesar_remoto(texto, confirmado)
 
     @staticmethod
     def recoger(desde, espera):
@@ -8185,10 +8595,37 @@ class Alfred(ControlPC):
                     res.append(c)
         return res[:6]
 
-    def procesar_remoto(self, texto):
-        """Una orden escrita desde otro dispositivo (API remota): igual que si la hubieras dicho, sin palabra de activación."""
+    def procesar_remoto(self, texto, confirmado=False):
+        """Una orden escrita desde otro dispositivo (API remota): igual que si la hubieras dicho, sin palabra de
+        activación, pero SOLO si POLITICA_REMOTA lo permite. Devuelve el veredicto (ver ServidorRemoto.ejecutar)."""
+        self._tl.veredicto = None
+        self._tl.confirmado = bool(confirmado)
         idioma = "en" if (self.cfg.get("idioma_en") and parece_ingles(texto)) else "es"
-        self.procesar(texto, idioma, directo=True)
+        try:
+            self.procesar(texto, idioma, directo=True)
+            return self._tl.veredicto or {"estado": "vacio", "mensaje": "", "id": None}
+        finally:
+            self._tl.veredicto = None
+            self._tl.confirmado = False
+
+    def _veredicto(self, estado, mensaje="", cid=None):
+        self._tl.veredicto = {"estado": estado, "mensaje": mensaje, "id": cid}
+
+    def _permitir_remoto(self, nivel, motivo, cid):
+        """Aplica el nivel a una orden remota. True = se ejecuta ahora; False = ya quedó contestada (bloqueada o a la
+        espera de confirmación en el teléfono)."""
+        if nivel == "avanzado" and not self.cfg.get("remoto_avanzado"):
+            nivel, motivo = "bloqueado", MENSAJE_AVANZADO
+        if nivel == "bloqueado":
+            motivo = motivo or "Esa orden solo se puede dar desde el propio PC."
+            self.gui.log("⚠️ Desde el móvil no se puede: " + motivo)
+            self._veredicto("bloqueado", motivo, cid)
+            return False
+        if nivel == "confirmar" and not getattr(self._tl, "confirmado", False):
+            self._veredicto("confirmar", PREGUNTA_REMOTA.get(cid, "¿Seguro que quieres hacerlo?"), cid)
+            return False
+        self._veredicto("ok", "", cid)
+        return True
 
     def procesar(self, texto, idioma="es", directo=False):
         """directo=True: la orden llega escrita desde otro dispositivo (control remoto): no necesita palabra de
@@ -8208,6 +8645,7 @@ class Alfred(ControlPC):
             return
         if directo and self.pend_conf and hay(norm, *PALABRAS_SI):
             self.gui.log("🔒 Una orden remota no puede confirmar una acción delicada: confírmala con tu voz en el PC.")
+            self._veredicto("bloqueado", "Las acciones delicadas se confirman con la voz, en el PC.", None)
             return
         if self.pend_conf and not directo:               # esperando un «sí» (dicho en voz alta) para algo delicado
             cmd, hasta = self.pend_conf
@@ -8251,6 +8689,9 @@ class Alfred(ControlPC):
         self.gui.log(("📱 " if directo else "🎤 ") + f"{raw}" + (f"   → {orden_cmd}" if orden_cmd != orden else ""),
                      privado=_priv)
         if propio:
+            if directo and not self._permitir_remoto(nivel_personalizado(propio), "Ese comando personalizado incluye "
+                                                     "acciones delicadas y solo se lanza desde el PC.", "personalizado"):
+                return
             self.lanzar(self.ejecutar_personalizado, propio, False)
             return
         cmd = buscar_comando(orden_cmd)
@@ -8266,9 +8707,15 @@ class Alfred(ControlPC):
                 cmd, orden_cmd = sem
                 raw_cmd = orden_cmd
         if not cmd:
+            if directo:
+                self._veredicto("desconocido", "No tengo ese comando.", None)
             self.gui.log(f"❓ No tengo ese comando (di «{self.nombre} ayuda»).")
             self.voz.decir("No tengo ese comando, señor.")
             return
+        if directo:                                      # 3.5: los límites de lo que se puede pedir desde el móvil
+            nivel, motivo = nivel_remoto(cmd["id"], normalizar(orden_cmd), self.nombre)
+            if not self._permitir_remoto(nivel, motivo, cmd["id"]):
+                return
         self.lanzar(getattr(self, "cmd_" + cmd["id"]), raw_cmd, orden_cmd)
 
     def lanzar(self, fn, *args):
@@ -9548,7 +9995,163 @@ class VentanaPersonalizados(ctk.CTkToplevel):
             self.nuevo()
 
 
+class VentanaVincular(ctk.CTkToplevel):
+    """3.5 · Vincular un teléfono: muestra un código QR que escanea la app Alfred Móvil. Vale en casa y fuera de casa."""
+
+    def __init__(self, master, alfred, al_cerrar=None):
+        super().__init__(master)
+        self.gui, self.alfred, self.al_cerrar = master, alfred, al_cerrar
+        self.title("Vincular teléfono")
+        self.geometry("470x800")
+        self.configure(fg_color=PAL["bg"])
+        self._enlace, self._job, self._cerrada = "", None, False
+        self._cuantos = len(alfred.remoto.dispositivos())
+        ctk.CTkLabel(self, text="VINCULAR TELÉFONO", font=(F_TIT, 20), text_color=PAL["neon"]).pack(
+            anchor="w", padx=22, pady=(16, 0))
+        ctk.CTkLabel(self, text="1.  Abre la app Alfred Móvil en tu teléfono\n2.  Toca «Escanear código QR»\n"
+                                "3.  Apunta la cámara a este código", font=("Segoe UI", 13), justify="left",
+                     anchor="w", text_color=PAL["text"]).pack(anchor="w", padx=22, pady=(8, 10))
+        self.lienzo = tk.Canvas(self, width=320, height=320, bg="white", highlightthickness=0)
+        self.lienzo.pack(pady=(0, 6))
+        self.lbl_estado = ctk.CTkLabel(self, text="Preparando…", font=("Segoe UI", 12), text_color=PAL["muted"],
+                                       wraplength=420, justify="center")
+        self.lbl_estado.pack(padx=20, pady=(2, 6))
+        fila = ctk.CTkFrame(self, fg_color="transparent")
+        fila.pack(pady=4)
+        ctk.CTkButton(fila, text="🔄 Código nuevo", width=140, command=self._preparar).pack(side="left", padx=4)
+        ctk.CTkButton(fila, text="📋 Copiar enlace", width=140, command=self._copiar).pack(side="left", padx=4)
+        self.lbl_fuera = ctk.CTkLabel(self, text="", font=("Segoe UI", 11), text_color=PAL["muted"], wraplength=420,
+                                      justify="left", anchor="w")
+        self.lbl_fuera.pack(fill="x", padx=24, pady=(12, 0))
+        ctk.CTkLabel(self, text="El código sirve una sola vez y caduca a los 10 minutos: no compartas esta pantalla. "
+                                "Si Windows pregunta por el Firewall, permite solo «Redes privadas». Si tu teléfono no "
+                                "puede escanear, usa «Copiar enlace» y pégalo en la app («Pegar enlace»).",
+                     font=("Segoe UI", 11), text_color=PAL["muted"], wraplength=420, justify="left",
+                     anchor="w").pack(fill="x", padx=24, pady=(8, 0))
+        ctk.CTkButton(self, text="Cerrar", width=120, fg_color=PAL["card2"], hover_color=PAL["hover"],
+                      command=self.cerrar).pack(pady=(12, 14))
+        self.protocol("WM_DELETE_WINDOW", self.cerrar)
+        self._preparar()
+        self._tick()
+        traer_al_frente(self)
+
+    def _preparar(self):
+        self._enlace = ""
+        try:
+            self.lbl_estado.configure(text="Preparando el código…", text_color=PAL["muted"])
+        except tk.TclError:
+            return
+        threading.Thread(target=self._preparar_hilo, daemon=True).start()
+
+    def _preparar_hilo(self):
+        enlace, ts = None, ("no_instalado", None)
+        try:
+            cfg, r = self.alfred.cfg, self.alfred.remoto
+            if not (cfg.get("remoto_activo") and cfg.get("remoto_lan")):     # vincular implica activar el control remoto
+                cfg.set("remoto_activo", True)
+                cfg.set("remoto_lan", True)
+            r.aplicar_config()
+            if r.activo() and r.rutas():
+                enlace = r.enlace_vinculo(r.nuevo_vinculo())
+            ts = estado_tailscale()
+        except Exception:
+            logging.exception("Vincular teléfono")
+        self.gui.ui(self._pintar, enlace, ts)
+
+    def _pintar(self, enlace, ts):
+        if self._cerrada:
+            return
+        try:
+            self.lienzo.delete("all")
+            if enlace:
+                m = generar_qr(enlace)
+                n = len(m)
+                px = max(3, 320 // (n + 8))                          # 4 módulos de margen blanco por lado
+                lado = px * (n + 8)
+                self.lienzo.configure(width=lado, height=lado)
+                self.lienzo.create_rectangle(0, 0, lado, lado, fill="white", outline="white")
+                for r, fila in enumerate(m):
+                    for c, v in enumerate(fila):
+                        if v:
+                            x, y = (c + 4) * px, (r + 4) * px
+                            self.lienzo.create_rectangle(x, y, x + px, y + px, fill="black", outline="black")
+                self._enlace = enlace
+                self.lbl_estado.configure(text="Esperando al teléfono…", text_color=PAL["ok"])
+            else:
+                self.lbl_estado.configure(text="⚠ No pude abrir el control remoto (¿otro programa usa el puerto "
+                                               f"{PUERTO_REMOTO}?) o no encuentro tu red. Mira alfred.log.",
+                                          text_color=PAL["warn"])
+            self.lbl_fuera.configure(text=texto_fuera_de_casa(ts))
+        except (tk.TclError, ValueError):
+            pass
+
+    def _copiar(self):
+        if self._enlace:
+            self.clipboard_clear()
+            self.clipboard_append(self._enlace)
+            self.lbl_estado.configure(text="Enlace copiado: en la app toca «Pegar enlace».", text_color=PAL["ok"])
+
+    def _tick(self):
+        self._job = None
+        if self._cerrada:
+            return
+        try:
+            r = self.alfred.remoto
+            lista = r.dispositivos()
+            if len(lista) > self._cuantos:
+                self.lbl_estado.configure(text=f"✓ Teléfono vinculado: {lista[-1].get('nombre', '')}",
+                                          text_color=PAL["ok"])
+                self._job = self.after(1800, self.cerrar)
+                return
+            if self._enlace:
+                seg = r.vinculo_restante()
+                if seg <= 0:
+                    self._preparar()                                  # el código caducó: genera otro solo
+                else:
+                    self.lbl_estado.configure(text=f"Esperando al teléfono… el código caduca en {seg // 60}:{seg % 60:02d}",
+                                              text_color=PAL["ok"])
+            self._job = self.after(1000, self._tick)
+        except tk.TclError:
+            pass
+
+    def cerrar(self):
+        self._cerrada = True
+        if self._job is not None:
+            try:
+                self.after_cancel(self._job)
+            except tk.TclError:
+                pass
+        try:
+            self.alfred.remoto.cancelar_vinculo()                     # un código sin usar no se queda valiendo
+            if self.al_cerrar:
+                self.al_cerrar()
+        except Exception:
+            logging.exception("Cerrar ventana de vinculación")
+        self.destroy()
+
+
+def VentanaVincular_viva(v):
+    try:
+        return v is not None and bool(v.winfo_exists())
+    except tk.TclError:
+        return False
+
+
+def texto_fuera_de_casa(ts):
+    """Lo que se le dice al usuario sobre usar Alfred fuera de su Wi-Fi, según el estado de Tailscale en el PC."""
+    estado, ip = ts
+    if estado == "ok":
+        return (f"🌍 Fuera de casa: ✓ Tailscale activo en este PC ({ip}). Instala Tailscale también en el teléfono e "
+                "inicia sesión con la misma cuenta: Alfred funcionará desde cualquier lugar.")
+    if estado == "apagado":
+        return ("🌍 Fuera de casa: Tailscale está instalado pero apagado o sin sesión. Ábrelo, inicia sesión y pulsa "
+                "«Código nuevo».")
+    return ("🌍 Fuera de casa: instala Tailscale (gratis) en el PC y en el teléfono, con la misma cuenta. "
+            "Mientras tanto Alfred funciona en tu Wi-Fi.")
+
+
 class PanelMenu(ctk.CTkFrame):
+
     """Todo lo que no hace falta tener a la vista en la ventana principal.
     Vive DENTRO de la ventana de Alfred (una tarjeta sobre un fondo oscuro) y no abre otra ventana: así la ventana
     principal no se minimiza, no cambia de tamaño (maximizada sigue maximizada) y no pierde el foco."""
@@ -9559,7 +10162,8 @@ class PanelMenu(ctk.CTkFrame):
         self.place(x=0, y=0, relwidth=1, relheight=1)
         self.bind("<Button-1>", lambda e: self.cerrar())          # tocar el fondo oscuro cierra el menú
         tarjeta = ctk.CTkFrame(self, fg_color=PAL["card"], corner_radius=14, border_width=1, border_color=PAL["line"])
-        tarjeta.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.95)
+        self._tarjeta, self._job_entrada, self._t_entrada = tarjeta, None, time.perf_counter()
+        tarjeta.place(relx=0.5, rely=0.545, anchor="center", relwidth=0.95, relheight=0.95)     # se desliza hasta 0.5
         cab = ctk.CTkFrame(tarjeta, fg_color="transparent")
         cab.pack(fill="x", padx=18, pady=(14, 0))
         ctk.CTkLabel(cab, text="☰  MENÚ", font=(F_TIT, 20), text_color=PAL["neon"]).pack(side="left")
@@ -9581,8 +10185,25 @@ class PanelMenu(ctk.CTkFrame):
         self._tab_mantenimiento(marcos["Mantenimiento"])
         ventana.bind("<Escape>", lambda e: self.cerrar())          # Esc también cierra el menú
         self.lift()
+        self._entrar()
+
+    def _entrar(self):
+        """Desliza la tarjeta 4,5 % hacia arriba en ~0,18 s (el tiempo manda, no el número de pasos)."""
+        self._job_entrada = None
+        try:
+            p = min(1.0, (time.perf_counter() - self._t_entrada) / 0.18)
+            self._tarjeta.place_configure(rely=0.545 - 0.045 * (1.0 - (1.0 - p) ** 3))
+            if p < 1.0:
+                self._job_entrada = self.after(16, self._entrar)
+        except tk.TclError:
+            pass
 
     def cerrar(self):
+        if self._job_entrada is not None:
+            try:
+                self.after_cancel(self._job_entrada)
+            except tk.TclError:
+                pass
         self.cfg.guardar()
         try:
             self.ventana.unbind("<Escape>")
@@ -9617,6 +10238,27 @@ class PanelMenu(ctk.CTkFrame):
                                        text_color=PAL["muted"])
         self.lbl_inicio.pack(fill="x", padx=14, pady=(2, 8))
         self._pintar_inicio()
+        ctk.CTkLabel(t, text="🫧  Burbuja flotante (Alfred en segundo plano)", font=(F_TIT, 13),
+                     anchor="w").pack(fill="x", padx=14, pady=(6, 0))
+        self.sw_burbuja = ctk.CTkSwitch(t, text="Mostrar la burbuja cuando Alfred está en segundo plano",
+                                        command=self.toggle_burbuja)
+        self.sw_burbuja.pack(anchor="w", padx=12, pady=(4, 0))
+        self.sw_burbuja_siempre = ctk.CTkSwitch(t, text="Mostrarla siempre, también con la ventana abierta",
+                                                command=self.toggle_burbuja)
+        self.sw_burbuja_siempre.pack(anchor="w", padx=12, pady=(6, 0))
+        if self.cfg.get("burbuja_activa") is not False:
+            self.sw_burbuja.select()
+        if self.cfg.get("burbuja_siempre"):
+            self.sw_burbuja_siempre.select()
+        fila_tam = ctk.CTkFrame(t, fg_color="transparent")
+        fila_tam.pack(fill="x", padx=12, pady=(8, 0))
+        ctk.CTkLabel(fila_tam, text="Tamaño", width=70, anchor="w").pack(side="left")
+        self.seg_tam = ctk.CTkSegmentedButton(fila_tam, values=["Pequeña", "Mediana", "Grande"],
+                                              command=self.cambiar_tam_burbuja, height=28)
+        self.seg_tam.set({0.8: "Pequeña", 1.25: "Grande"}.get(self.cfg.get("burbuja_tam"), "Mediana"))
+        self.seg_tam.pack(side="left", padx=6)
+        self._nota(t, "Se aparta sola con un juego o vídeo a pantalla completa. Arrástrala donde quieras (se pega al "
+                      "borde); clic = abrir Alfred; clic derecho = opciones.")
         self.campos = {}
         for clave, etiqueta, ayuda in (("ciudad", "Ciudad (para el clima)", "ej. Tuxtla Gutierrez"),
                                        ("navegador", "Navegador para páginas", "ej. Opera GX (vacío = predeterminado)"),
@@ -9633,6 +10275,15 @@ class PanelMenu(ctk.CTkFrame):
                       + SpotifyAPI.REDIRECT + "), pega aquí su Client ID, guarda y pulsa «Conectar Spotify». Requiere Premium.")
         ctk.CTkButton(t, text="🎧 Conectar Spotify", command=self.conectar_spotify).pack(pady=(4, 0))
         ctk.CTkButton(t, text="💾 Guardar", command=self.guardar_general).pack(pady=16)
+
+    def toggle_burbuja(self):
+        self.cfg.set("burbuja_activa", bool(self.sw_burbuja.get()))
+        self.cfg.set("burbuja_siempre", bool(self.sw_burbuja_siempre.get()))
+        self.gui.burbuja.sincronizar()
+
+    def cambiar_tam_burbuja(self, valor):
+        self.cfg.set("burbuja_tam", {"Pequeña": 0.8, "Mediana": 1.0, "Grande": 1.25}.get(valor, 1.0))
+        self.gui.burbuja.reconfigurar()
 
     def conectar_spotify(self):
         self.guardar_general()
@@ -10041,69 +10692,151 @@ class PanelMenu(ctk.CTkFrame):
     # ── Mantenimiento ────────────────────────────────────────────────────────
     # ── Remoto ───────────────────────────────────────────────────────────────
     def _tab_remoto(self, t):
-        ctk.CTkLabel(t, text="📱 Controlar Alfred desde el móvil u otro dispositivo",
+        ctk.CTkLabel(t, text="📱 Controlar Alfred desde el móvil",
                      font=("Segoe UI Semibold", 13)).pack(anchor="w", padx=12, pady=(12, 2))
-        self._nota(t, "Abre una página web (y una API) en este PC. Desde el móvil abres el enlace en el navegador y "
-                      "controlas Alfred: escribes órdenes y ves lo que responde. Es la base para una app móvil.")
-        self.sw_remoto = ctk.CTkSwitch(t, text="Activar el control remoto", command=self.toggle_remoto)
+        self._nota(t, "Instala Alfred Móvil en tu teléfono y vincúlalo con un código QR: sin escribir IPs ni claves. "
+                      "Funciona en tu Wi-Fi y, con Tailscale, también fuera de casa.")
+        self.sw_remoto = ctk.CTkSwitch(t, text="Permitir controlar este PC desde el móvil", command=self.toggle_remoto)
         if self.cfg.get("remoto_activo"):
             self.sw_remoto.select()
         self.sw_remoto.pack(anchor="w", padx=12, pady=(4, 2))
-        self.sw_lan = ctk.CTkSwitch(t, text="Permitir otros dispositivos de mi red Wi-Fi", command=self.toggle_remoto)
-        if self.cfg.get("remoto_lan"):
-            self.sw_lan.select()
-        self.sw_lan.pack(anchor="w", padx=12, pady=2)
         self.lbl_remoto = ctk.CTkLabel(t, text="", anchor="w", justify="left", wraplength=500, font=("Segoe UI", 11),
                                        text_color=PAL["muted"])
-        self.lbl_remoto.pack(fill="x", padx=14, pady=(6, 4))
-        self.e_remoto = ctk.CTkEntry(t, width=480, placeholder_text="El enlace aparece al activarlo")
+        self.lbl_remoto.pack(fill="x", padx=14, pady=(2, 6))
+        ctk.CTkButton(t, text="📱  Vincular teléfono", height=40, font=(F_TIT, 14),
+                      command=self.vincular_telefono).pack(anchor="w", padx=12, pady=(2, 8))
+        ctk.CTkLabel(t, text="Teléfonos vinculados", font=(F_TIT, 12), anchor="w").pack(fill="x", padx=14, pady=(8, 0))
+        self.marco_disp = ctk.CTkFrame(t, fg_color="transparent")
+        self.marco_disp.pack(fill="x", padx=8, pady=(2, 4))
+        ctk.CTkLabel(t, text="🌍 Fuera de casa", font=(F_TIT, 12), anchor="w").pack(fill="x", padx=14, pady=(10, 0))
+        self.lbl_fuera = ctk.CTkLabel(t, text="Comprobando Tailscale…", anchor="w", justify="left", wraplength=500,
+                                      font=("Segoe UI", 11), text_color=PAL["muted"])
+        self.lbl_fuera.pack(fill="x", padx=14, pady=(2, 4))
+        ctk.CTkButton(t, text="Abrir la página de Tailscale", width=210, fg_color=PAL["card2"], hover_color=PAL["hover"],
+                      command=lambda: webbrowser.open("https://tailscale.com/download")).pack(anchor="w", padx=12, pady=(0, 6))
+        ctk.CTkLabel(t, text="🔐 Qué puede hacer el móvil", font=(F_TIT, 12), anchor="w").pack(fill="x", padx=14, pady=(10, 0))
+        self._nota(t, "Puede: música y volumen, brillo, capturas, bloquear, abrir apps y webs, ventanas, alarmas, notas, "
+                      "estado del PC… Pide confirmación en el teléfono: suspender, hibernar y cerrar programas. "
+                      "Nunca desde el móvil: apagar, reiniciar, cerrar sesión, desconectar el Wi-Fi, consolas y registro "
+                      "de Windows. Estos límites los aplica este PC, aunque alguien modifique la app.")
+        self.sw_avanzado = ctk.CTkSwitch(t, text="Teclado y ratón desde el móvil (avanzado, menos seguro)",
+                                         command=self.toggle_avanzado)
+        if self.cfg.get("remoto_avanzado"):
+            self.sw_avanzado.select()
+        self.sw_avanzado.pack(anchor="w", padx=12, pady=(4, 2))
+        self._nota(t, "Permite escribir, pulsar atajos y hacer clic. Quien controle un teléfono vinculado podría hacer casi "
+                      "cualquier cosa en el PC: actívalo solo si lo necesitas. (Flechas, zoom y desplazarse por la página "
+                      "funcionan siempre.)")
+        ctk.CTkLabel(t, text="🌐 Página web (opcional)", font=(F_TIT, 12), anchor="w").pack(fill="x", padx=14, pady=(10, 0))
+        self.e_remoto = ctk.CTkEntry(t, width=480, placeholder_text="El enlace aparece al activar el control remoto")
         self.e_remoto.pack(anchor="w", padx=12, pady=4)
         fila = ctk.CTkFrame(t, fg_color="transparent")
         fila.pack(fill="x", padx=8, pady=2)
-        ctk.CTkButton(fila, text="📋 Copiar enlace", width=130, command=self.copiar_enlace_remoto).pack(side="left", padx=4)
-        ctk.CTkButton(fila, text="🔑 Clave nueva", width=120, command=self.clave_nueva_remoto).pack(side="left", padx=4)
-        self._nota(t, "El enlace lleva tu clave: quien lo tenga controla el PC, así que no lo compartas. Con «red» apagado "
-                      "solo funciona en este mismo PC; con «red» encendido acepta únicamente direcciones privadas (Wi-Fi de "
-                      "casa, Tailscale), nunca de internet. La conexión no va cifrada (http): úsalo en tu Wi-Fi de confianza. "
-                      "La primera vez Windows puede preguntar por el Firewall: permite solo «Redes privadas».")
+        ctk.CTkButton(fila, text="📋 Copiar enlace web", width=140, command=self.copiar_enlace_remoto).pack(side="left", padx=4)
+        ctk.CTkButton(fila, text="🔑 Clave web nueva", width=130, command=self.clave_nueva_remoto).pack(side="left", padx=4)
+        ctk.CTkButton(fila, text="Quitar todos los teléfonos", width=170, fg_color=PAL["card2"], hover_color=PAL["hover"],
+                      command=self.quitar_todos_remoto).pack(side="left", padx=4)
+        self._nota(t, "El enlace web lleva una clave maestra: quien lo tenga controla el PC, así que no lo compartas. "
+                      "La conexión no va cifrada (http): en tu Wi-Fi de confianza o por Tailscale (que sí cifra). "
+                      "Acepta únicamente direcciones privadas, nunca de internet.")
+        self._v_vincular = None
         self._pintar_remoto()
 
     def _pintar_remoto(self):
         try:
             r = self.alfred.remoto
-            dirs = r.direcciones()
             if not self.cfg.get("remoto_activo"):
                 txt, color = "Desactivado.", PAL["muted"]
             elif not r.activo():
                 txt, color = "⚠ No pude abrir el puerto (¿otro programa lo usa?). Mira alfred.log.", PAL["warn"]
             else:
-                txt = (f"✓ Activo en el puerto {r.puerto}" + (" · visible en tu red Wi-Fi." if self.cfg.get("remoto_lan")
-                                                               else " · solo este PC (para probar). Activa «red» para el móvil."))
+                txt = f"✓ Activo en el puerto {r.puerto}" + (" · visible en tu red." if self.cfg.get("remoto_lan")
+                                                            else " · solo este PC.")
                 color = PAL["ok"]
             self.lbl_remoto.configure(text=txt, text_color=color)
+            self._pintar_dispositivos()
+        except tk.TclError:
+            return
+        threading.Thread(target=self._consultar_red, daemon=True).start()       # estos dos pueden tardar: fuera de la interfaz
+
+    def _consultar_red(self):
+        try:
+            dirs, ts = self.alfred.remoto.direcciones(), estado_tailscale()
+        except Exception:
+            logging.exception("Consultar la red del control remoto")
+            return
+        self.gui.ui(self._aplicar_red, dirs, ts)
+
+    def _aplicar_red(self, dirs, ts):
+        try:
             self.e_remoto.configure(state="normal")
             self.e_remoto.delete(0, "end")
             if dirs:
                 self.e_remoto.insert(0, dirs[0])
             self.e_remoto.configure(state="readonly")
+            self.lbl_fuera.configure(text=texto_fuera_de_casa(ts))
         except tk.TclError:
             pass                                             # el menú se cerró mientras tanto
 
+    def _pintar_dispositivos(self):
+        for w in self.marco_disp.winfo_children():
+            w.destroy()
+        r = self.alfred.remoto
+        lista = r.dispositivos()
+        if not lista:
+            ctk.CTkLabel(self.marco_disp, text="Ninguno todavía. Pulsa «Vincular teléfono».", anchor="w",
+                         font=("Segoe UI", 11), text_color=PAL["muted"]).pack(fill="x", padx=6, pady=2)
+            return
+        for d in lista:
+            hace = r.visto_hace(d.get("id"))
+            detalle = "vinculado el " + time.strftime("%d/%m/%Y", time.localtime(d.get("creado") or 0))
+            if hace is not None:
+                detalle += " · conectado ahora" if hace < 90 else f" · visto hace {int(hace // 60)} min"
+            fila = ctk.CTkFrame(self.marco_disp, fg_color=PAL["card2"], corner_radius=8)
+            fila.pack(fill="x", pady=2)
+            ctk.CTkLabel(fila, text=f"📱 {d.get('nombre', 'Teléfono')}\n{detalle}", justify="left", anchor="w",
+                         font=("Segoe UI", 11)).pack(side="left", padx=10, pady=6)
+            ctk.CTkButton(fila, text="Quitar", width=70, height=28, fg_color=PAL["card"], hover_color=PAL["hover"],
+                          command=lambda i=d.get("id"): self.quitar_dispositivo_remoto(i)).pack(side="right", padx=8)
+
+    def vincular_telefono(self):
+        if VentanaVincular_viva(self._v_vincular):
+            traer_al_frente(self._v_vincular)
+            return
+        self._v_vincular = VentanaVincular(self.gui, self.alfred, al_cerrar=self._pintar_remoto)
+
+    def quitar_dispositivo_remoto(self, id_disp):
+        self.alfred.remoto.quitar_dispositivo(id_disp)
+        self._pintar_dispositivos()
+
+    def quitar_todos_remoto(self):
+        if self.alfred.remoto.dispositivos() and messagebox.askyesno(
+                "Quitar teléfonos", "¿Desvincular todos los teléfonos? Tendrán que vincularse otra vez.", parent=self):
+            self.alfred.remoto.quitar_todos()
+            self._pintar_dispositivos()
+
     def toggle_remoto(self):
-        self.cfg.set("remoto_activo", bool(self.sw_remoto.get()))
-        self.cfg.set("remoto_lan", bool(self.sw_lan.get()))
+        on = bool(self.sw_remoto.get())
+        self.cfg.set("remoto_activo", on)
+        if on:
+            self.cfg.set("remoto_lan", True)                 # un móvil solo puede llegar si se acepta la red
 
         def aplicar():
             self.alfred.remoto.aplicar_config()
             self.gui.ui(self._pintar_remoto)
         threading.Thread(target=aplicar, daemon=True).start()
 
+    def toggle_avanzado(self):
+        on = bool(self.sw_avanzado.get())
+        self.cfg.set("remoto_avanzado", on)
+        self.gui.log("⌨️ Teclado y ratón desde el móvil: " + ("ACTIVADO." if on else "desactivado."))
+
     def copiar_enlace_remoto(self):
         dirs = self.alfred.remoto.direcciones()
         if dirs:
             self.clipboard_clear()
             self.clipboard_append(dirs[0])
-            self.gui.log("📋 Enlace del control remoto copiado.")
+            self.gui.log("📋 Enlace web del control remoto copiado.")
         else:
             self.gui.log("ℹ️ Activa el control remoto para obtener el enlace.")
 
@@ -10139,6 +10872,851 @@ class PanelMenu(ctk.CTkFrame):
             self.gui.log("Todavía no hay registro.")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  3.4 · BURBUJA FLOTANTE (Alfred en segundo plano) y animaciones fluidas
+#
+#  Con la ventana en la bandeja, una burbuja pequeña y casi transparente flota en el borde de la pantalla: respira en
+#  reposo, gira al oírte, muestra barras al hablar y despliega una tarjeta con lo que contesta en el mismo instante en
+#  que empieza a sonar la voz. Se aparta sola con un juego o vídeo a pantalla completa; se arrastra y se pega al borde.
+#
+#  Cómo se mantiene ligera:
+#    · Sin Tk en el dibujo: cada fotograma se pinta con Pillow (bordes suaves) y se entrega a Windows como ventana de
+#      transparencia por píxel (UpdateLayeredWindow). No roba el foco ni sale en Alt+Tab.
+#    · Sin trabajo en reposo: oculta = ningún temporizador; visible y quieta = ~8 fotogramas/s; activa = ~30/s.
+#    · Los tiempos usan relojes reales (no «un paso por fotograma»): igual de fluido a 8, 30 o 60 fps.
+#    · Se muestra/oculta por eventos (<Map>/<Unmap>), sin sondear el estado de la ventana.
+# ══════════════════════════════════════════════════════════════════════════════
+from PIL import ImageFont  # noqa: E402
+
+_RE_EMOJI = re.compile("[\U00010000-\U0010ffff\u2600-\u27bf\u2b00-\u2bff\ufe0f\u200d]")
+
+
+def _rgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def _hex(c):
+    return "#%02x%02x%02x" % tuple(max(0, min(255, int(round(v)))) for v in c)
+
+
+def _suavizar(actual, meta, dt, tasa):
+    """Acerca «actual» a «meta» con suavizado exponencial: igual de fluido a cualquier tasa de fotogramas."""
+    return actual + (meta - actual) * (1.0 - math.exp(-dt * tasa))
+
+
+def _salida(t):
+    """easeOutCubic: arranca rápido y frena al llegar (aperturas y desplazamientos)."""
+    t = max(0.0, min(1.0, t))
+    return 1.0 - (1.0 - t) ** 3
+
+
+class OrbeAnimado:
+    """Lógica (sin Tk) del indicador de la ventana principal: el color y la velocidad cambian con inercia en vez de a
+    saltos, y la rotación usa el reloj real, así que no se frena si el PC va justo."""
+
+    def __init__(self, color, vel=0.10, reloj=time.perf_counter):
+        self.reloj = reloj
+        self.col = self.meta = _rgb(color)
+        self.vel = self.vel_meta = vel
+        self.fase, self._t = 0.0, reloj()
+
+    def fijar(self, color, vel):
+        self.meta, self.vel_meta = _rgb(color), vel
+
+    def paso(self):
+        """(fase, pulso 0-1, color '#rrggbb', ¿sigue cambiando?)"""
+        t = self.reloj()
+        dt = min(0.1, max(0.0, t - self._t))
+        self._t = t
+        self.col = tuple(_suavizar(a, b, dt, 7.0) for a, b in zip(self.col, self.meta))
+        self.vel = _suavizar(self.vel, self.vel_meta, dt, 5.0)
+        self.fase += self.vel * 14.3 * dt                  # 14,3 = los ~14 fotogramas/s de antes: misma velocidad
+        moviendo = max(abs(a - b) for a, b in zip(self.col, self.meta)) > 1.5 or abs(self.vel - self.vel_meta) > 0.01
+        return self.fase, (math.sin(self.fase) + 1) / 2, _hex(self.col), moviendo
+
+
+def _recortar(fuente, s, ancho):
+    while len(s) > 1 and fuente.getlength(s + "…") > ancho:
+        s = s[:-1]
+    return s + "…"
+
+
+def _ajustar(fuente, texto, ancho, max_lineas):
+    """Parte «texto» en líneas que caben en «ancho» px; si sobran, la última acaba en «…»."""
+    lineas, actual = [], ""
+    for p in texto.split():
+        prueba = (actual + " " + p) if actual else p
+        if not actual or fuente.getlength(prueba) <= ancho:
+            actual = prueba
+        else:
+            lineas.append(actual)
+            actual = p
+    if actual:
+        lineas.append(actual)
+    lineas = [(_recortar(fuente, l, ancho) if fuente.getlength(l) > ancho else l) for l in lineas]
+    if len(lineas) > max_lineas:
+        lineas = lineas[:max_lineas]
+        ultima = lineas[-1]
+        while " " in ultima and fuente.getlength(ultima + "…") > ancho:        # quita palabras enteras, no letras
+            ultima = ultima.rsplit(" ", 1)[0]
+        lineas[-1] = ultima + "…" if fuente.getlength(ultima + "…") <= ancho else _recortar(fuente, ultima, ancho)
+    return lineas
+
+
+class DibujanteBurbuja:
+    """Pinta los fotogramas de la burbuja con Pillow: supersampling para bordes suaves y nada de Tk."""
+    SS = 3
+
+    def __init__(self):
+        self._fuentes, self._halos = {}, {}
+
+    def fuente(self, px, negrita=False):
+        clave = (px, negrita)
+        f = self._fuentes.get(clave)
+        if f is None:
+            nombres = (("segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf") if negrita else
+                       ("segoeui.ttf", "arial.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf"))
+            for n in nombres:
+                try:
+                    f = ImageFont.truetype(n, px)
+                    break
+                except OSError:
+                    continue
+            if f is None:
+                try:
+                    f = ImageFont.load_default(px)
+                except TypeError:
+                    f = ImageFont.load_default()
+            self._fuentes[clave] = f
+        return f
+
+    def halo(self, lado):
+        """Máscara radial (resplandor) precalculada: se tiñe y se escala por fotograma sin recalcular nada."""
+        m = self._halos.get(lado)
+        if m is None:
+            c = (lado - 1) / 2.0
+            ys, xs = np.mgrid[0:lado, 0:lado]
+            d = np.hypot(xs - c, ys - c) / (lado / 2.0)
+            m = Image.fromarray((np.clip(1.0 - d, 0.0, 1.0) ** 2.2 * 255).astype("uint8"), "L")
+            self._halos[lado] = m
+        return m
+
+    def orbe(self, B, esc, col, fase, fase_v, mix, nivel, escala, brillo):
+        """Imagen RGBA BxB: resplandor, disco, anillo, arcos que giran (oyendo/trabajando) y barras de voz."""
+        S = self.SS
+        N = B * S
+        capa = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+        d = ImageDraw.Draw(capa)
+        c = N / 2.0
+        r = 27.0 * esc * escala * S
+        rgb = tuple(int(v) for v in col)
+        w = max(1, int(2.2 * esc * S))
+        activo = max(mix["habla"], mix["gira"], mix["alerta"])
+        d.ellipse((c - r, c - r, c + r, c + r), fill=(8, 14, 24, 232))
+        d.ellipse((c - r, c - r, c + r, c + r), outline=rgb + (int(140 + 115 * activo),), width=w)
+        if mix["gira"] > 0.02:
+            a = int(255 * mix["gira"])
+            ang = math.degrees(fase) * 1.4
+            for k in range(3):
+                d.arc((c - r * 0.84, c - r * 0.84, c + r * 0.84, c + r * 0.84), ang + k * 120, ang + k * 120 + 56,
+                      fill=rgb + (a,), width=w)
+            r2 = r * 0.58
+            for k in range(2):
+                d.arc((c - r2, c - r2, c + r2, c + r2), -ang * 1.6 + k * 180, -ang * 1.6 + k * 180 + 70,
+                      fill=rgb + (int(a * 0.55),), width=max(1, w // 2))
+        if mix["habla"] > 0.02:
+            n, r0 = 24, r * 0.34
+            ancho_barra = max(1, int(2.1 * esc * S))
+            for i in range(n):
+                ang = 2 * math.pi * i / n + fase_v * 0.35
+                onda = 0.5 + 0.5 * math.sin(fase_v * 6.0 + i * 1.7) * math.sin(fase_v * 2.3 + i * 0.9)
+                largo = r * (0.05 + 0.50 * onda * nivel) * mix["habla"]
+                ca, sa = math.cos(ang), math.sin(ang)
+                d.line((c + (r0) * ca, c + (r0) * sa, c + (r0 + largo) * ca, c + (r0 + largo) * sa),
+                       fill=rgb + (int(235 * mix["habla"]),), width=ancho_barra)
+        pulso = 0.5 + 0.5 * math.sin(fase_v * 2.2)
+        rn = r * (0.17 + 0.05 * pulso + 0.07 * nivel * mix["habla"])
+        d.ellipse((c - rn, c - rn, c + rn, c + rn), fill=rgb + (255,))
+        capa = capa.reduce(S)
+        base = Image.new("RGBA", (B, B), rgb + (0,))
+        base.putalpha(self.halo(B).point(lambda v: int(v * brillo)))
+        base.alpha_composite(capa)
+        return base
+
+    def tarjeta(self, w, h, lay, x_texto, esc, col, texto_a, fase_v, pensando):
+        """Tarjeta redondeada con lo que oyó Alfred (apagado) y lo que contesta; tres puntos si aún piensa."""
+        S = 2
+        capa = Image.new("RGBA", (w * S, h * S), (0, 0, 0, 0))
+        d = ImageDraw.Draw(capa)
+        borde = _rgb(mezclar(_hex(col), PAL["card"], 0.55))
+        d.rounded_rectangle((0, 0, w * S - 1, h * S - 1), int(min(h * S / 2, 18 * esc * S)), fill=(13, 20, 31, 238),
+                            outline=borde + (200,), width=max(1, S))
+        capa = capa.reduce(S)
+        if texto_a > 0.02:
+            tx = Image.new("RGBA", (w, h), _rgb(PAL["text"]) + (0,))
+            dt = ImageDraw.Draw(tx)
+            a = int(255 * texto_a)
+            y = (h - lay["h"]) // 2 + lay["pad_y"]
+            if lay["eco"]:
+                dt.text((x_texto, y), lay["eco"], font=lay["f_eco"], fill=_rgb(PAL["muted"]) + (a,))
+                y += lay["leh"] + 3
+            for linea in lay["lineas"]:
+                dt.text((x_texto, y), linea, font=lay["f"], fill=_rgb(PAL["text"]) + (a,))
+                y += lay["lh"]
+            if pensando and not lay["lineas"]:
+                rp = 3.2 * esc
+                for i in range(3):
+                    cx = x_texto + rp + i * rp * 3.4
+                    cy = y + rp + 3 * esc - 3.2 * esc * (0.5 + 0.5 * math.sin(fase_v * 7.0 - i * 0.9))
+                    dt.ellipse((cx - rp, cy - rp, cx + rp, cy + rp), fill=_rgb(_hex(col)) + (a,))
+            capa.alpha_composite(tx)
+        return capa
+
+
+# ── ventanas donde se muestra el fotograma ───────────────────────────────────
+class _BLEND(ctypes.Structure):
+    _fields_ = [("BlendOp", ctypes.c_ubyte), ("BlendFlags", ctypes.c_ubyte),
+                ("SourceConstantAlpha", ctypes.c_ubyte), ("AlphaFormat", ctypes.c_ubyte)]
+
+
+class _CABECERA_BMP(ctypes.Structure):
+    _fields_ = [("biSize", ctypes.c_uint32), ("biWidth", ctypes.c_int32), ("biHeight", ctypes.c_int32),
+                ("biPlanes", ctypes.c_uint16), ("biBitCount", ctypes.c_uint16), ("biCompression", ctypes.c_uint32),
+                ("biSizeImage", ctypes.c_uint32), ("biXPelsPerMeter", ctypes.c_int32),
+                ("biYPelsPerMeter", ctypes.c_int32), ("biClrUsed", ctypes.c_uint32), ("biClrImportant", ctypes.c_uint32)]
+
+
+class _VentanaCapas:
+    """Ventana sin bordes con transparencia POR PÍXEL (UpdateLayeredWindow): bordes y resplandor suaves, no roba el foco
+    (WS_EX_NOACTIVATE) y no sale en Alt+Tab (WS_EX_TOOLWINDOW). Los píxeles transparentes dejan pasar el ratón."""
+
+    def __init__(self, win):
+        self.win, self._tam, self._bmp, self._bits, self._original, self._geo = win, None, None, None, None, None
+        u = self.u = ctypes.WinDLL("user32", use_last_error=True)
+        g = self.g = ctypes.WinDLL("gdi32", use_last_error=True)
+        vp = ctypes.c_void_p
+        u.GetDC.restype, u.GetDC.argtypes = vp, [vp]
+        u.ReleaseDC.argtypes = [vp, vp]
+        u.GetAncestor.restype, u.GetAncestor.argtypes = vp, [vp, ctypes.c_uint]
+        u.SetWindowPos.argtypes = [vp, vp, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+        u.UpdateLayeredWindow.restype = ctypes.c_int
+        u.UpdateLayeredWindow.argtypes = [vp, vp, ctypes.POINTER(wintypes.POINT), ctypes.POINTER(wintypes.SIZE), vp,
+                                          ctypes.POINTER(wintypes.POINT), ctypes.c_uint32, ctypes.POINTER(_BLEND),
+                                          ctypes.c_uint32]
+        g.CreateCompatibleDC.restype, g.CreateCompatibleDC.argtypes = vp, [vp]
+        g.CreateDIBSection.restype = vp
+        g.CreateDIBSection.argtypes = [vp, vp, ctypes.c_uint, ctypes.POINTER(vp), vp, ctypes.c_uint32]
+        g.SelectObject.restype, g.SelectObject.argtypes = vp, [vp, vp]
+        g.DeleteObject.argtypes = [vp]
+        g.DeleteDC.argtypes = [vp]
+        interno = win.winfo_id()
+        self.hwnd = u.GetAncestor(interno, 2) or interno                  # 2 = GA_ROOT: la ventana de verdad
+        leer = getattr(u, "GetWindowLongPtrW", None) or u.GetWindowLongW
+        poner = getattr(u, "SetWindowLongPtrW", None) or u.SetWindowLongW
+        leer.restype, leer.argtypes = ctypes.c_ssize_t, [vp, ctypes.c_int]
+        poner.restype, poner.argtypes = ctypes.c_ssize_t, [vp, ctypes.c_int, ctypes.c_ssize_t]
+        poner(self.hwnd, -20, leer(self.hwnd, -20) | 0x80000 | 0x80 | 0x08000000)   # LAYERED | TOOLWINDOW | NOACTIVATE
+        self.dc_pantalla = u.GetDC(None)
+        self.dc = g.CreateCompatibleDC(self.dc_pantalla)
+
+    def _dib(self, w, h):
+        if (w, h) == self._tam:
+            return
+        cab = _CABECERA_BMP(40, w, -h, 1, 32, 0, 0, 0, 0, 0, 0)               # alto negativo: filas de arriba abajo
+        bits = ctypes.c_void_p()
+        bmp = self.g.CreateDIBSection(self.dc, ctypes.byref(cab), 0, ctypes.byref(bits), None, 0)
+        if not bmp:
+            raise OSError("CreateDIBSection")
+        previo = self.g.SelectObject(self.dc, bmp)
+        if self._bmp:
+            self.g.DeleteObject(self._bmp)
+        else:
+            self._original = previo
+        self._bmp, self._bits, self._tam = bmp, bits.value, (w, h)
+
+    def mostrar(self):
+        self.win.deiconify()
+
+    def ocultar(self):
+        self.win.withdraw()
+
+    def presentar(self, img, x, y, alfa):
+        w, h = img.size
+        self._dib(w, h)
+        datos = img.convert("RGBa").tobytes("raw", "BGRa")                    # BGRA con alfa premultiplicado
+        ctypes.memmove(self._bits, datos, len(datos))
+        mezcla = _BLEND(0, 0, max(0, min(255, int(alfa * 255))), 1)           # AC_SRC_OVER + alfa por píxel
+        dst, tam, src = wintypes.POINT(int(x), int(y)), wintypes.SIZE(w, h), wintypes.POINT(0, 0)
+        if not self.u.UpdateLayeredWindow(self.hwnd, self.dc_pantalla, ctypes.byref(dst), ctypes.byref(tam), self.dc,
+                                          ctypes.byref(src), 0, ctypes.byref(mezcla), 2):
+            raise OSError(ctypes.get_last_error(), "UpdateLayeredWindow")
+        geo = (w, h, int(x), int(y))
+        if geo != self._geo:                      # la ventana de Tk cubre la imagen: así recibe el ratón donde hay burbuja
+            self._geo = geo
+            self.win.geometry(f"{w}x{h}{int(x):+d}{int(y):+d}")
+
+    def subir(self):
+        """Vuelve a ponerla por encima de otras ventanas «siempre visibles» (sin activarla)."""
+        self.u.SetWindowPos(self.hwnd, ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+
+    def cerrar(self):
+        try:
+            if self._original:
+                self.g.SelectObject(self.dc, self._original)
+            if self._bmp:
+                self.g.DeleteObject(self._bmp)
+            self.g.DeleteDC(self.dc)
+            self.u.ReleaseDC(None, self.dc_pantalla)
+        except Exception:
+            logging.exception("Burbuja: al liberar la ventana")
+
+
+class _VentanaTk:
+    """Plan B (si Windows no deja la transparencia por píxel): color transparente de Tk. Bordes algo más duros."""
+    CLAVE = "#010203"
+
+    def __init__(self, win):
+        from PIL import ImageTk
+        self.win, self._ImageTk, self._foto = win, ImageTk, None
+        win.configure(bg=self.CLAVE)
+        win.attributes("-transparentcolor", self.CLAVE)
+        self.lbl = tk.Label(win, bd=0, highlightthickness=0, bg=self.CLAVE)
+        self.lbl.pack()
+
+    def mostrar(self):
+        self.win.deiconify()
+
+    def ocultar(self):
+        self.win.withdraw()
+
+    def presentar(self, img, x, y, alfa):
+        plano = Image.new("RGB", img.size, _rgb(self.CLAVE))
+        plano.paste(img, (0, 0), img)
+        self._foto = self._ImageTk.PhotoImage(plano)
+        self.lbl.configure(image=self._foto)
+        self.win.attributes("-alpha", max(0.05, min(1.0, alfa)))
+        self.win.geometry(f"{img.size[0]}x{img.size[1]}{int(x):+d}{int(y):+d}")
+
+    def subir(self):
+        self.win.lift()
+
+    def cerrar(self):
+        pass
+
+
+def crear_ventana_burbuja(raiz, forzar_tk=False):
+    """(ventana Tk, presentador). Intenta la transparencia por píxel; si algo falla, usa el plan B."""
+    win = tk.Toplevel(raiz)
+    win.withdraw()
+    win.overrideredirect(True)
+    win.attributes("-topmost", True)
+    if not forzar_tk:
+        try:
+            win.update_idletasks()
+            return win, _VentanaCapas(win)
+        except Exception:
+            logging.exception("Burbuja: sin transparencia por píxel; uso el modo sencillo")
+            win.destroy()
+            win = tk.Toplevel(raiz)
+            win.withdraw()
+            win.overrideredirect(True)
+            win.attributes("-topmost", True)
+    return win, _VentanaTk(win)
+
+
+def hay_pantalla_completa():
+    """True si hay un juego o vídeo a pantalla completa o una presentación: la burbuja se aparta sola."""
+    try:
+        est = ctypes.c_int(0)
+        if ctypes.windll.shell32.SHQueryUserNotificationState(ctypes.byref(est)) == 0:
+            return est.value in (2, 3, 4)          # BUSY, Direct3D a pantalla completa, modo presentación
+    except Exception:
+        pass
+    return False
+
+
+def area_trabajo(raiz):
+    """(izq, arriba, der, abajo) de la pantalla sin la barra de tareas."""
+    try:
+        r = wintypes.RECT()
+        if ctypes.windll.user32.SystemParametersInfoW(0x30, 0, ctypes.byref(r), 0):    # SPI_GETWORKAREA
+            return r.left, r.top, r.right, r.bottom
+    except Exception:
+        pass
+    return 0, 0, raiz.winfo_screenwidth(), raiz.winfo_screenheight()
+
+
+class BurbujaFlotante:
+    """Alfred en segundo plano: una burbuja que se sincroniza al instante con lo que oye, piensa y contesta."""
+    BASE, DISCO, MARGEN, ANCHO_MAX = 84, 27, 12, 320
+    ALFA_REPOSO, ALFA_ACTIVA = 0.50, 0.97
+    # estado -> color (clave de PAL), opacidad, escala, velocidad de giro (rad/s), mezcla (habla, gira, alerta)
+    _OBJ = {
+        "reposo": ("ok", ALFA_REPOSO, 0.86, 0.9, (0, 0, 0)),
+        "atento": ("neon", ALFA_ACTIVA, 1.0, 4.2, (0, 1, 0)),
+        "trabaja": ("warn", 0.85, 0.95, 5.5, (0, 1, 0)),
+        "habla": ("voz", ALFA_ACTIVA, 1.04, 1.6, (1, 0, 0)),
+        "aviso": ("warn", ALFA_ACTIVA, 1.0, 1.2, (0, 0, 1)),
+        "error": ("err", ALFA_ACTIVA, 1.0, 1.2, (0, 0, 1)),
+    }
+
+    def __init__(self, gui, cfg, reloj=time.perf_counter, fabrica=None):
+        self.gui, self.cfg, self.reloj = gui, cfg, reloj
+        self._fabrica = fabrica or (lambda: crear_ventana_burbuja(gui, bool(cfg.get("burbuja_modo_tk"))))
+        self.dib = DibujanteBurbuja()
+        self.win = self.vent = None
+        self.visible = self.quiere = self._pantalla_completa = False
+        self.estado_id, self.hover = "reposo", False
+        self.col = self.col_meta = _rgb(PAL["ok"])
+        self.alfa = self.alfa_meta = 0.0
+        self.escala = self.escala_meta = 0.6
+        self.fase = self.fase_v = 0.0
+        self.vel = self.vel_meta = 0.9
+        self.mix = {"habla": 0.0, "gira": 0.0, "alerta": 0.0}
+        self.mix_meta = dict(self.mix)
+        self.nivel = 0.0
+        self.card_t = self.card_meta = 0.0
+        self.texto = self.eco = ""
+        self.pensando = False
+        self.cerrar_en = self.min_hasta = self.espera_hasta = 0.0
+        self._lay = None
+        self.x = self.y = None
+        self._arrastre = self._snap = None
+        self._job = self._vigilante = None
+        self._t0 = reloj()
+        self._ult_aviso = ("", 0.0)
+        self._esc = 1.0
+        self.fotogramas = 0
+        self._fallos_pres = 0
+
+    # ── tamaño y posición ────────────────────────────────────────────────────
+    def _calc_esc(self):
+        try:
+            dpi = max(1.0, min(3.0, float(self.gui.winfo_fpixels("1i")) / 96.0))
+        except Exception:
+            dpi = 1.0
+        try:
+            tam = max(0.6, min(1.6, float(self.cfg.get("burbuja_tam") or 1.0)))
+        except (TypeError, ValueError):
+            tam = 1.0
+        self._esc = dpi * tam
+
+    def _B(self):
+        return int(round(self.BASE * self._esc))
+
+    def _halo_px(self):
+        return (self._B() - 2 * self.DISCO * self._esc) / 2.0
+
+    def _area(self):
+        return area_trabajo(self.gui)
+
+    def _posicion_guardada(self):
+        l, t, r, b = self._area()
+        B = self._B()
+        pos = self.cfg.get("burbuja_pos") or {}
+        lado = "izq" if pos.get("lado") == "izq" else "der"
+        try:
+            fy = max(0.0, min(1.0, float(pos.get("y", 0.38))))
+        except (TypeError, ValueError):
+            fy = 0.38
+        x = (l + self.MARGEN - self._halo_px()) if lado == "izq" else (r - self.MARGEN - B + self._halo_px())
+        return x, t + fy * max(1, (b - t - B))
+
+    # ── ciclo de vida ────────────────────────────────────────────────────────
+    def reconfigurar(self):
+        """Cambió el tamaño en el menú."""
+        self._calc_esc()
+        self.x, self.y = self._posicion_guardada()
+        self._relayout()
+        self._despertar()
+
+    def _crear(self):
+        self.win, self.vent = self._fabrica()
+        for ev, fn in (("<ButtonPress-1>", self._al_pulsar), ("<B1-Motion>", self._al_mover),
+                       ("<ButtonRelease-1>", self._al_soltar), ("<Button-3>", self._menu),
+                       ("<Enter>", self._al_entrar), ("<Leave>", self._al_salir)):
+            self.win.bind(ev, fn)
+
+    def _mostrar_ventana(self):
+        if self.vent is None:
+            try:
+                self._crear()
+            except Exception:
+                logging.exception("Burbuja: no pude crear la ventana")
+                self.cfg.set("burbuja_activa", False)
+                self.gui.log("⚠️ No pude crear la burbuja flotante; la desactivo (mira alfred.log).")
+                return False
+        self._calc_esc()
+        if self._arrastre is None:
+            self.x, self.y = self._posicion_guardada()
+        self.alfa, self.escala = 0.0, 0.6               # entra «apareciendo» y creciendo
+        self.col, self.mix = self.col_meta, dict(self.mix_meta)
+        self.vent.mostrar()
+        self.visible = True
+        self._t0 = self.reloj()
+        return True
+
+    def _ocultar_ventana(self):
+        self.visible = False
+        if self.vent is not None:
+            try:
+                self.vent.ocultar()
+            except Exception:
+                logging.exception("Burbuja: al ocultar")
+
+    def destruir(self):
+        self.quiere = False
+        for j in (self._job, self._vigilante):
+            if j is not None:
+                try:
+                    self.gui.after_cancel(j)
+                except Exception:
+                    pass
+        self._job = self._vigilante = None
+        try:
+            if self.vent is not None:
+                self.vent.cerrar()
+            if self.win is not None:
+                self.win.destroy()
+        except Exception:
+            pass
+        self.win = self.vent = None
+
+    # ── visibilidad ──────────────────────────────────────────────────────────
+    def sincronizar(self):
+        """Decide si debe verse: activada en el menú, Alfred en segundo plano (o «siempre») y sin juego a pantalla completa."""
+        activa = self.cfg.get("burbuja_activa") is not False
+        base = activa and (self.gui.en_segundo_plano() or bool(self.cfg.get("burbuja_siempre")))
+        self._vigilar(base)
+        self._pedir(base and not self._pantalla_completa)
+
+    def _pedir(self, quiere):
+        self.quiere = quiere
+        if quiere:
+            if not self.visible and not self._mostrar_ventana():
+                self.quiere = False
+                return
+            self.alfa_meta = self._objetivo_alfa()
+            self._despertar()
+        else:
+            self.alfa_meta = 0.0
+            if self.visible:
+                self._despertar()
+
+    def _vigilar(self, base):
+        if base and self._vigilante is None:
+            self._vigilante = self.gui.after(2000, self._vigilar_paso)
+        elif not base and self._vigilante is not None:
+            self.gui.after_cancel(self._vigilante)
+            self._vigilante = None
+
+    def _vigilar_paso(self):
+        self._vigilante = None
+        completa = hay_pantalla_completa()
+        if completa != self._pantalla_completa:
+            self._pantalla_completa = completa
+            self.sincronizar()                          # vuelve a armar el vigilante
+            return
+        if self.visible and self.vent is not None:
+            try:
+                self.vent.subir()
+            except Exception:
+                pass
+        self._vigilante = self.gui.after(2000, self._vigilar_paso)
+
+    # ── lo que Alfred cuenta ─────────────────────────────────────────────────
+    def _objetivo_alfa(self):
+        a = self._OBJ[self.estado_id][1]
+        return max(a, self.ALFA_ACTIVA) if self.hover else a
+
+    def _fijar(self, nombre):
+        self.estado_id = nombre
+        c, alfa, esc, vel, mix = self._OBJ[nombre]
+        self.col_meta = _rgb(PAL[c])
+        self.escala_meta, self.vel_meta = esc, vel
+        self.mix_meta = dict(zip(("habla", "gira", "alerta"), (float(m) for m in mix)))
+        if self.quiere:
+            self.alfa_meta = self._objetivo_alfa()
+
+    def estado(self, txt, privado=False):
+        """Mismos textos que AlfredGUI.estado: «🗣️ lo que dice», «🟢 Escuchando…», «🟡 …», «🔴 …», «✍️ Dictando…»."""
+        ahora = self.reloj()
+        for emoji in ("🗣", "🟢", "🟡", "🔴", "✍"):
+            if txt.startswith(emoji):
+                limpio = txt[len(emoji):].lstrip("\ufe0f ").strip()
+                break
+        else:
+            return
+        if not (self.quiere or self.visible):             # oculta: solo se recuerda el estado (sin tarjetas ni dibujo)
+            self._fijar({"🟢": "reposo", "🟡": "trabaja", "🔴": "error"}.get(emoji, self.estado_id))
+            self.card_meta, self.pensando = 0.0, False
+            return
+        if emoji == "🗣":
+            self._hablar(limpio, privado, ahora)
+        elif emoji == "🟢":
+            self._reposo(ahora)
+        elif emoji == "🟡":
+            if self.estado_id not in ("habla", "atento"):
+                self._fijar("trabaja")
+        elif emoji == "🔴":
+            self._tarjeta("", limpio[:90], "error", ahora + 6.0)
+        else:                                            # dictado: tarjeta fija hasta que vuelva «🟢»
+            self._tarjeta("", "Dictando…", "atento", 0.0)
+        self._despertar()
+
+    def evento(self, msj):
+        """Líneas del registro (ya sin datos privados): lo que oye, órdenes remotas y avisos."""
+        if not self.quiere and not self.visible:
+            return
+        ahora = self.reloj()
+        m = msj.lstrip()
+        if m.startswith(("🎤", "📱")):
+            eco = _RE_EMOJI.sub("", m).split("→")[0].strip()[:70]
+            if eco:
+                self.eco, self.texto, self.pensando = eco, "", True
+                self.espera_hasta, self.cerrar_en, self.min_hasta = ahora + 3.5, 0.0, 0.0
+                self._fijar("atento")
+                self.card_meta = 1.0
+                self._relayout()
+        elif m.startswith(("⚠", "❌", "❓")) and self.estado_id != "habla":
+            t = _RE_EMOJI.sub("", m).strip()[:90]
+            if t and not (t == self._ult_aviso[0] and ahora - self._ult_aviso[1] < 6.0):
+                self._ult_aviso = (t, ahora)
+                self._tarjeta("", t, "aviso", ahora + 3.2 + 0.03 * len(t))
+        else:
+            return
+        self._despertar()
+
+    def _tarjeta(self, eco, texto, estado, cerrar_en):
+        self.eco, self.texto, self.pensando = eco, texto, False
+        self.cerrar_en, self.min_hasta = cerrar_en, 0.0
+        self._fijar(estado)
+        self.card_meta = 1.0
+        self._relayout()
+
+    def _hablar(self, texto, privado, ahora):
+        self.pensando = False
+        self.texto = "Respuesta privada" if privado else _RE_EMOJI.sub("", texto).strip()
+        self.cerrar_en = 0.0
+        self.min_hasta = ahora + min(7.0, 1.6 + 0.035 * len(self.texto))
+        self._fijar("habla")
+        self.card_meta = 1.0
+        self._relayout()
+
+    def _reposo(self, ahora):
+        self._fijar("reposo")
+        if not self.pensando and self.card_meta > 0:
+            self.cerrar_en = max(ahora + 1.5, self.min_hasta)
+
+    # ── diseño de la tarjeta ─────────────────────────────────────────────────
+    def _relayout(self):
+        if not (self.texto or self.eco or self.pensando):
+            self._lay = None
+            return
+        e = self._esc
+        f, fe = self.dib.fuente(max(10, round(14 * e))), self.dib.fuente(max(9, round(12 * e)))
+        pad, inset, pad_y = round(14 * e), round((self.DISCO + 14) * e), round(11 * e)
+        lh, leh = round(19 * e), round(16 * e)
+        ancho_t = round(self.ANCHO_MAX * e) - pad - inset
+        lineas = _ajustar(f, self.texto, ancho_t, 3) if self.texto else []
+        eco = _ajustar(fe, self.eco, ancho_t, 1)[0] if self.eco else ""
+        wt = max([f.getlength(l) for l in lineas] + [fe.getlength(eco) if eco else 0, 44 * e])
+        h = 2 * pad_y + (leh + 3 if eco else 0) + (len(lineas) * lh if lineas else (round(14 * e) if self.pensando else 0))
+        self._lay = {"w": inset + int(math.ceil(wt)) + pad, "h": max(h, round(44 * e)), "pad": pad, "inset": inset,
+                     "pad_y": pad_y, "lh": lh, "leh": leh, "f": f, "f_eco": fe, "lineas": lineas, "eco": eco}
+
+    # ── animación ────────────────────────────────────────────────────────────
+    def _despertar(self):
+        """Pide un fotograma ya (por ejemplo, al llegar un evento mientras dormía a 8 fps)."""
+        if self.vent is None or not self.visible and not self.quiere:
+            return
+        if self._job is not None:
+            self.gui.after_cancel(self._job)
+        self._job = self.gui.after(1, self._tick)
+
+    def _intervalo(self):
+        activo = (self.card_t > 0 or self.card_meta > 0 or self.estado_id != "reposo" or self._arrastre or self._snap
+                  or self.hover or abs(self.alfa - self.alfa_meta) > 0.01 or abs(self.escala - self.escala_meta) > 0.004
+                  or max(self.mix.values()) > 0.02)
+        return 33 if activo else 125
+
+    def _avanzar(self, dt, ahora):
+        k = 1.0 - math.exp(-dt * 9.0)
+        self.col = tuple(c + (m - c) * k for c, m in zip(self.col, self.col_meta))
+        self.alfa = _suavizar(self.alfa, self.alfa_meta, dt, 8.0)
+        self.escala = _suavizar(self.escala, self.escala_meta, dt, 10.0)
+        self.vel = _suavizar(self.vel, self.vel_meta, dt, 5.0)
+        self.fase += self.vel * dt
+        self.fase_v += dt
+        for n in self.mix:
+            self.mix[n] = _suavizar(self.mix[n], self.mix_meta[n], dt, 8.0)
+        if self.mix_meta["habla"] > 0:                     # envolvente de voz sintética: sube y baja como sílabas
+            obj = 0.60 + 0.40 * math.sin(self.fase_v * 5.1) * math.sin(self.fase_v * 1.7 + 0.8)
+            self.nivel = _suavizar(self.nivel, max(0.25, obj), dt, 14.0)
+        else:
+            self.nivel = _suavizar(self.nivel, 0.0, dt, 6.0)
+        paso = dt / 0.30
+        if self.card_t < self.card_meta:
+            self.card_t = min(self.card_meta, self.card_t + paso)
+        elif self.card_t > self.card_meta:
+            self.card_t = max(self.card_meta, self.card_t - paso * 1.2)
+        if self.pensando and ahora > self.espera_hasta:   # lo oyó pero no hubo respuesta hablada
+            self.pensando = False
+            if self.estado_id == "atento":
+                self._fijar("reposo")
+            self.cerrar_en = ahora + 0.5
+        if self.cerrar_en and ahora >= self.cerrar_en:
+            self.cerrar_en = 0.0
+            self.card_meta = 0.0
+            if self.estado_id == "aviso":
+                self._fijar("reposo")
+        if self.card_t <= 0.0 and self.card_meta == 0.0 and (self.texto or self.eco or self._lay):
+            self.texto = self.eco = ""
+            self._lay = None
+        if self._snap:
+            x0, y0, x1, y1, t0 = self._snap
+            p = (ahora - t0) / 0.24
+            e = _salida(p)
+            self.x, self.y = x0 + (x1 - x0) * e, y0 + (y1 - y0) * e
+            if p >= 1.0:
+                self._snap = None
+
+    def _tick(self):
+        self._job = None
+        if not self.visible or self.vent is None:
+            return
+        ahora = self.reloj()
+        dt = min(0.1, max(0.0, ahora - self._t0))
+        self._t0 = ahora
+        self._avanzar(dt, ahora)
+        if self.alfa_meta == 0.0 and self.alfa < 0.02:      # terminó de desvanecerse: sin ventana y sin temporizador
+            self._ocultar_ventana()
+            return
+        try:
+            img, ox, oy = self._componer()
+            self.vent.presentar(img, ox, oy, self.alfa)
+            self.fotogramas += 1
+        except Exception:
+            if not self._a_modo_tk():
+                return
+        self._job = self.gui.after(self._intervalo(), self._tick)
+
+    def _a_modo_tk(self):
+        """El presentador con transparencia por píxel falló: se rehace la ventana con el plan B (una sola vez)."""
+        self._fallos_pres += 1
+        if isinstance(self.vent, _VentanaTk) or self._fallos_pres > 1:
+            logging.exception("Burbuja: el modo sencillo también falló; la desactivo")
+            self.cfg.set("burbuja_activa", False)
+            self._ocultar_ventana()
+            return False
+        logging.exception("Burbuja: UpdateLayeredWindow falló; paso al modo sencillo")
+        self.cfg.set("burbuja_modo_tk", True)
+        try:
+            self.vent.cerrar()
+            self.win.destroy()
+        except Exception:
+            pass
+        self.win = self.vent = None
+        self._crear()
+        self.vent.mostrar()
+        return True
+
+    def _componer(self):
+        e_ = self._esc
+        B = self._B()
+        brillo = 0.20 + 0.28 * max(self.mix.values()) + 0.08 * (0.5 + 0.5 * math.sin(self.fase_v * 2.2))
+        orbe = self.dib.orbe(B, e_, self.col, self.fase, self.fase_v, self.mix, self.nivel, self.escala, brillo)
+        l, t, r, b = self._area()
+        abre_der = (self.x + B / 2.0) < (l + r) / 2.0
+        if self._lay and self.card_t > 0.004:
+            lay, e = self._lay, _salida(self.card_t)
+            cw, ch = max(2, int(lay["w"] * e)), max(2, int(lay["h"] * (0.55 + 0.45 * e)))
+            x_texto = lay["inset"] if abre_der else cw - lay["w"] + lay["pad"]
+            tarjeta = self.dib.tarjeta(cw, ch, lay, x_texto, e_, self.col,
+                                       max(0.0, (e - 0.55) / 0.45), self.fase_v, self.pensando)
+            W, H = B // 2 + cw, max(B, ch)
+            lienzo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            y_card, y_orbe = (H - ch) // 2, (H - B) // 2
+            if abre_der:
+                lienzo.alpha_composite(tarjeta, (B // 2, y_card))
+                lienzo.alpha_composite(orbe, (0, y_orbe))
+                ox = self.x
+            else:
+                lienzo.alpha_composite(tarjeta, (0, y_card))
+                lienzo.alpha_composite(orbe, (W - B, y_orbe))
+                ox = self.x - (W - B)
+            oy = self.y - y_orbe
+            halo = self._halo_px()                       # el borde transparente del resplandor puede salirse un poco
+            ox, oy = max(l - halo, min(ox, r + halo - W)), max(t - halo, min(oy, b + halo - H))
+            return lienzo, int(ox), int(oy)
+        return orbe, int(self.x), int(self.y)
+
+    # ── ratón: arrastrar, pegar al borde, abrir, menú ───────────────────────
+    def _al_entrar(self, e):
+        self.hover = True
+        if self.quiere:
+            self.alfa_meta = self._objetivo_alfa()
+        self.escala_meta = max(self.escala_meta, 1.0)
+        self._despertar()
+
+    def _al_salir(self, e):
+        self.hover = False
+        self._fijar(self.estado_id)
+        self._despertar()
+
+    def _al_pulsar(self, e):
+        self._arrastre = {"p0": self.gui.winfo_pointerxy(), "o0": (self.x, self.y), "mov": False}
+        self._snap = None
+
+    def _al_mover(self, e):
+        a = self._arrastre
+        if not a:
+            return
+        px, py = self.gui.winfo_pointerxy()
+        dx, dy = px - a["p0"][0], py - a["p0"][1]
+        if not a["mov"] and abs(dx) + abs(dy) < 5:
+            return
+        a["mov"] = True
+        self.x, self.y = a["o0"][0] + dx, a["o0"][1] + dy
+        self._despertar()
+
+    def _al_soltar(self, e):
+        a, self._arrastre = self._arrastre, None
+        if not a:
+            return
+        if not a["mov"]:
+            self.gui.mostrar()
+            return
+        self._pegar_al_borde()
+
+    def _pegar_al_borde(self):
+        l, t, r, b = self._area()
+        B, halo = self._B(), self._halo_px()
+        lado = "izq" if self.x + B / 2.0 < (l + r) / 2.0 else "der"
+        x1 = (l + self.MARGEN - halo) if lado == "izq" else (r - self.MARGEN - B + halo)
+        y1 = max(t + 4, min(self.y, b - B - 4))
+        self._snap = (self.x, self.y, x1, y1, self.reloj())
+        self.cfg.set("burbuja_pos", {"lado": lado, "y": round((y1 - t) / max(1, (b - t - B)), 4)})
+        self._despertar()
+
+    def _menu(self, e):
+        m = tk.Menu(self.win, tearoff=0, bg=PAL["card"], fg=PAL["text"], activebackground=PAL["hover"],
+                    activeforeground=PAL["text"], bd=0, relief="flat")
+        m.add_command(label="Abrir Alfred", command=self.gui.mostrar)
+        m.add_command(label="Ocultar la burbuja", command=self._desactivar)
+        m.add_separator()
+        m.add_command(label="Salir de Alfred", command=self.gui.salir)
+        try:
+            m.tk_popup(*self.gui.winfo_pointerxy())
+        finally:
+            m.grab_release()
+
+    def _desactivar(self):
+        self.cfg.set("burbuja_activa", False)
+        self.sincronizar()
+        self.gui.log("🫧 Burbuja oculta. Puedes volver a activarla en ☰ Menú → General.")
+
+
 class AlfredGUI(ctk.CTk):
     def __init__(self, cfg):
         super().__init__()
@@ -10147,8 +11725,9 @@ class AlfredGUI(ctk.CTk):
         self._tray_listo = threading.Event()
         self.v_ayuda = self.v_agenda = self.v_personal = self.v_menu = None
         self.cola_ui = queue.Queue()
-        self._orb_color, self._orb_fase, self._orb_vel, self._tok_prog = PAL["warn"], 0.0, 0.10, 0
-        self._acento = None
+        self.orbe, self._tok_prog = OrbeAnimado(PAL["warn"], 0.10), 0
+        self._acento, self._acento_col = None, PAL["warn"]
+        self._oculta, self._fade_tok, self._orb_job, self._nuevo_job, self._o_cols = False, 0, None, None, None
         self.title(f"{nombre_desde_cfg(cfg)} OS")
         self.geometry("720x780")
         self.minsize(600, 660)
@@ -10159,6 +11738,7 @@ class AlfredGUI(ctk.CTk):
         cab.pack(fill="x", padx=22, pady=(18, 4))
         self.orb = tk.Canvas(cab, width=64, height=64, bg=PAL["bg"], highlightthickness=0)
         self.orb.pack(side="left")
+        self._crear_orb()
         tit = ctk.CTkFrame(cab, fg_color="transparent")
         tit.pack(side="left", padx=14)
         self.lbl_nombre = ctk.CTkLabel(tit, text=f"{nombre_desde_cfg(cfg)} OS", font=(F_TIT, 30), text_color=PAL["text"])
@@ -10226,11 +11806,16 @@ class AlfredGUI(ctk.CTk):
                           command=accion).grid(row=0, column=i, padx=5, sticky="ew")
 
         self.protocol("WM_DELETE_WINDOW", self.ocultar)
+        self.burbuja = BurbujaFlotante(self, cfg)
+        self.bind("<Unmap>", lambda e: self._visibilidad(e, True))          # por eventos: sin sondear el estado
+        self.bind("<Map>", lambda e: self._visibilidad(e, False))
         self._iniciar_bandeja()
         self.after(50, self._drenar)
-        self.after(100, self._animar_orb)
+        self._orb_job = self.after(100, self._animar_orb)
         if "--oculto" in sys.argv:
             self.withdraw()
+            self._oculta = True
+            self.after(600, self.burbuja.sincronizar)          # arrancó con Windows: la burbuja avisa que ya escucha
 
     def _dibujar_linea(self, e):
         """Filete bajo la cabecera: del cian al fondo (decorativo, se redibuja solo al cambiar de tamaño)."""
@@ -10264,6 +11849,7 @@ class AlfredGUI(ctk.CTk):
             except Exception:
                 logging.exception("No pude aplicar el estilo %s", nombre)
         tag("fila", tabs=("62p", "86p"), lmargin1=8, lmargin2="86p", spacing1=3, spacing3=3)
+        tag("nuevo", background=PAL["bg2"])                  # 3.4: la línea recién llegada se enciende y se apaga
         tag("ts", foreground=PAL["muted"], font=("Consolas", 10))
         tag("ico", font=("Segoe UI Emoji", 11))
         for nombre, color, negrita in (("orden", PAL["acc_luz"], True), ("respuesta", "#6ee7b7", False), ("ok", PAL["ok"], False),
@@ -10291,12 +11877,43 @@ class AlfredGUI(ctk.CTk):
             if msj and not msj[0].isalnum() and msj[0] not in "«¿¡(":      # otro emoji inicial: se conserva como icono
                 icono, texto = msj[0], msj[1:].lstrip("\ufe0f ").strip()
         tw = self.console._textbox
+        ini = tw.index("end-1c")
         tw.insert("end", ts, ("fila", filtro, "ts"))
         tw.insert("end", f"\t{icono}\t", ("fila", filtro, "ico"))
         tw.insert("end", texto + "\n", ("fila", filtro, "t_" + cat))
         if int(tw.index("end-1c").split(".")[0]) > 600:
             tw.delete("1.0", "120.0")
+            ini = tw.index("end-1c linestart -1l")
         tw.see("end")
+        self._resaltar(ini)
+
+    def _resaltar(self, ini):
+        """Tinte cian que se apaga en ~0,9 s sobre la línea nueva (≈18 cambios de color, solo con la ventana a la vista)."""
+        if self._oculta:
+            return
+        tw = self.console._textbox
+        if self._nuevo_job is not None:
+            self.after_cancel(self._nuevo_job)
+            self._nuevo_job = None
+        try:
+            tw.tag_remove("nuevo", "1.0", "end")
+            tw.tag_add("nuevo", ini, "end-1c")
+        except tk.TclError:
+            return
+        t0 = time.perf_counter()
+
+        def paso():
+            self._nuevo_job = None
+            p = min(1.0, (time.perf_counter() - t0) / 0.9)
+            try:
+                if p >= 1.0:
+                    tw.tag_remove("nuevo", "1.0", "end")
+                    return
+                tw.tag_configure("nuevo", background=mezclar(PAL["acc"], PAL["bg2"], 0.70 + 0.30 * (1 - (1 - p) ** 2)))
+            except tk.TclError:
+                return
+            self._nuevo_job = self.after(50, paso)
+        paso()
 
     def filtrar(self, valor):
         tw = self.console._textbox
@@ -10322,11 +11939,8 @@ class AlfredGUI(ctk.CTk):
                     logging.exception("Error en la interfaz")
         except queue.Empty:
             pass
-        try:                                            # ventana oculta/minimizada: revisa la cola 4 veces por segundo
-            oculta = self.state() in ("withdrawn", "iconic")
-        except tk.TclError:
-            oculta = False
-        self.after(250 if oculta else 50, self._drenar)
+        # visible: 20 veces/s · oculta con burbuja a la vista: 25 veces/s (que conteste al instante) · oculta sin ella: 4
+        self.after(40 if self.burbuja.visible else (250 if self._oculta else 50), self._drenar)
 
     def log(self, msj, privado=None):
         """privado: texto neutro (solo el tipo de operación y una métrica) para alfred.log y el bus de eventos remoto.
@@ -10335,51 +11949,97 @@ class AlfredGUI(ctk.CTk):
         logging.info(pub)
         BUS.publicar(_tipo_evento(pub), pub)                 # lo siguen los dispositivos remotos
         self.ui(self._log, time.strftime("%H:%M:%S"), msj)
+        if pub[:1] in "🎤📱⚠❌❓" and self.burbuja.quiere:
+            self.ui(self.burbuja.evento, pub)
 
     # ── estado e indicador animado ───────────────────────────────────────────
-    def estado(self, txt):
-        self.ui(self._estado, txt)
+    def estado(self, txt, privado=False):
+        self.ui(self._estado, txt, privado)
 
-    def _estado(self, txt):
+    def _estado(self, txt, privado=False):
         color, limpio = PAL["muted"], txt
         for emoji, c in (("🟢", PAL["ok"]), ("🟡", PAL["warn"]), ("🔴", PAL["err"]), ("🗣", PAL["voz"])):
             if txt.startswith(emoji):
                 color, limpio = c, txt[len(emoji):].lstrip("\ufe0f ").strip()
                 break
-        self._orb_color = color
-        if self._acento is not None:
-            try:
-                self._acento.configure(fg_color=color)
-            except Exception:
-                pass
-        self._orb_vel = 0.28 if txt.startswith("🗣") else 0.10
+        self.orbe.fijar(color, 0.28 if txt.startswith("🗣") else 0.10)     # cambia con inercia, no a saltos
+        self._despertar_orb()
+        self.burbuja.estado(txt, privado)
         self.label_estado.configure(text=limpio if len(limpio) <= 70 else limpio[:69] + "…")
 
+    def _crear_orb(self):
+        """Los elementos del indicador se crean UNA vez; cada fotograma solo se mueven (nada de borrar y recrear)."""
+        o, bg, c = self.orb, PAL["bg"], PAL["warn"]
+        self._o_halo = o.create_oval(0, 0, 0, 0, fill=bg, outline="")
+        self._o_anillo = o.create_oval(5, 5, 59, 59, outline=bg, width=1)
+        self._o_ext = [o.create_arc(5, 5, 59, 59, start=0, extent=58, style="arc", outline=c, width=2) for _ in range(3)]
+        self._o_int = [o.create_arc(14, 14, 50, 50, start=0, extent=70, style="arc", outline=c, width=1) for _ in range(2)]
+        self._o_nucleo = o.create_oval(0, 0, 0, 0, fill=c, outline="")
+
+    def _despertar_orb(self):
+        if self._orb_job is None and not self._oculta:
+            self._orb_job = self.after(1, self._animar_orb)
+
     def _animar_orb(self):
-        try:
-            if self.state() not in ("withdrawn", "iconic"):
-                self._orb_fase += self._orb_vel
-                pulso = (math.sin(self._orb_fase) + 1) / 2
-                c, bg, o = self._orb_color, PAL["bg"], self.orb
-                o.delete("all")
-                ang = math.degrees(self._orb_fase) * 1.4
-                g = 12 + 5 * pulso                                   # halo
-                o.create_oval(32 - g, 32 - g, 32 + g, 32 + g, fill=mezclar(c, bg, 0.82), outline="")
-                o.create_oval(5, 5, 59, 59, outline=mezclar(c, bg, 0.72), width=1)
-                for k in range(3):                                   # anillo exterior: 3 arcos que giran
-                    o.create_arc(5, 5, 59, 59, start=ang + k * 120, extent=58, style="arc", outline=c, width=2)
-                for k in range(2):                                   # anillo interior: gira al revés
-                    o.create_arc(14, 14, 50, 50, start=-ang * 1.6 + k * 180, extent=70, style="arc",
-                                 outline=mezclar(c, bg, 0.45), width=1)
-                r = 6 + 3 * pulso                                    # núcleo
-                o.create_oval(32 - r, 32 - r, 32 + r, 32 + r, fill=c, outline="")
-        except tk.TclError:
+        self._orb_job = None
+        if self._oculta:                                    # sin ventana a la vista no se anima nada
             return
         try:
-            oculta = self.state() in ("withdrawn", "iconic")
+            fase, pulso, c, moviendo = self.orbe.paso()
+            o, bg = self.orb, PAL["bg"]
+            ang = math.degrees(fase) * 1.4
+            g, r = 12 + 5 * pulso, 6 + 3 * pulso            # halo y núcleo respiran
+            o.coords(self._o_halo, 32 - g, 32 - g, 32 + g, 32 + g)
+            o.coords(self._o_nucleo, 32 - r, 32 - r, 32 + r, 32 + r)
+            for k, it in enumerate(self._o_ext):             # anillo exterior: 3 arcos que giran
+                o.itemconfigure(it, start=ang + k * 120)
+            for k, it in enumerate(self._o_int):             # anillo interior: gira al revés
+                o.itemconfigure(it, start=-ang * 1.6 + k * 180)
+            if c != self._o_cols:                            # el color solo se reaplica cuando cambia
+                self._o_cols = c
+                o.itemconfigure(self._o_halo, fill=mezclar(c, bg, 0.82))
+                o.itemconfigure(self._o_anillo, outline=mezclar(c, bg, 0.72))
+                for it in self._o_ext:
+                    o.itemconfigure(it, outline=c)
+                for it in self._o_int:
+                    o.itemconfigure(it, outline=mezclar(c, bg, 0.45))
+                o.itemconfigure(self._o_nucleo, fill=c)
+                if self._acento is not None:                 # la barra de estado sigue el mismo degradado
+                    self._acento.configure(fg_color=c)
         except tk.TclError:
             return
-        self.after(500 if oculta else 70, self._animar_orb)
+        self._orb_job = self.after(33 if (moviendo or self.orbe.vel > 0.15) else 50, self._animar_orb)
+
+    def _visibilidad(self, e, oculta):
+        """<Map>/<Unmap> de la ventana principal: manda sobre animaciones y burbuja sin sondear su estado."""
+        if e.widget is not self or oculta == self._oculta:
+            return
+        self._oculta = oculta
+        if not oculta:
+            self._despertar_orb()
+        self.burbuja.sincronizar()
+
+    def en_segundo_plano(self):
+        return self._oculta
+
+    def _fundir(self, a0, a1, ms=160, fin=None):
+        """Desvanece la ventana principal con arranque y frenado suaves (el tiempo manda, no el número de pasos)."""
+        self._fade_tok += 1
+        tok, t0 = self._fade_tok, time.perf_counter()
+
+        def paso():
+            if tok != self._fade_tok:
+                return
+            p = min(1.0, (time.perf_counter() - t0) * 1000.0 / ms)
+            try:
+                self.attributes("-alpha", a0 + (a1 - a0) * p * p * (3 - 2 * p))
+            except tk.TclError:
+                return
+            if p < 1.0:
+                self.after(16, paso)
+            elif fin:
+                fin()
+        paso()
 
     def nombre_os(self):
         return f"{self.alfred.nombre if self.alfred else nombre_desde_cfg(self.cfg)} OS"
@@ -10507,8 +12167,11 @@ class AlfredGUI(ctk.CTk):
     # ── ventana / bandeja ────────────────────────────────────────────────────
     def ocultar(self):
         if self.tray:
-            self.withdraw()
-            self.log(f"💤 {self.nombre_os()} sigue activo en la bandeja del sistema.")
+            def ya():
+                self.withdraw()
+                self.attributes("-alpha", 1.0)
+                self.log(f"💤 {self.nombre_os()} sigue activo en la bandeja del sistema.")
+            self._fundir(1.0, 0.0, 140, ya)
         else:
             self.iconify()
 
@@ -10521,7 +12184,19 @@ class AlfredGUI(ctk.CTk):
             estado = "normal"
         oculta = estado in ("withdrawn", "iconic")
         if oculta:
+            try:
+                self.attributes("-alpha", 0.0)                       # aparece desvaneciéndose, no de golpe
+            except tk.TclError:
+                pass
             self.deiconify()
+            self._fundir(0.0, 1.0, 180)
+        else:
+            try:
+                a = float(self.attributes("-alpha"))
+            except (tk.TclError, ValueError):
+                a = 1.0
+            if a < 0.99:                                             # lo pidieron a mitad de un desvanecimiento
+                self._fundir(a, 1.0, 120)
         if traer or oculta:
             self.lift()
             self.attributes("-topmost", True)
@@ -10530,6 +12205,10 @@ class AlfredGUI(ctk.CTk):
             self.after(30, lambda: forzar_primer_plano(self))
 
     def salir(self):
+        try:
+            self.burbuja.destruir()
+        except Exception:
+            pass
         if self.tray:
             try:
                 self.tray.stop()

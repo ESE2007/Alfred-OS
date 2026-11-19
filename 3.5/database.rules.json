@@ -1,0 +1,61 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "pcs": {
+      "$pc": {
+
+        "pair": {
+          ".write": "auth != null && auth.uid === $pc",
+          ".validate": "newData.hasChildren(['codigo', 'hasta'])",
+          "codigo": { ".validate": "newData.isString() && newData.val().length >= 16 && newData.val().length <= 64" },
+          "hasta": { ".validate": "newData.isNumber()" },
+          "$otro": { ".validate": false }
+        },
+
+        "owners": {
+          ".read": "auth != null && auth.uid === $pc",
+          ".write": "auth != null && auth.uid === $pc",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid"
+          }
+        },
+
+        "solicitudes": {
+          ".read": "auth != null && auth.uid === $pc",
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $pc || (auth.uid === $uid && (!newData.exists() || (root.child('pcs').child($pc).child('pair').child('codigo').val() === newData.child('codigo').val() && root.child('pcs').child($pc).child('pair').child('hasta').val() > now))))",
+            ".validate": "newData.hasChildren(['codigo', 't'])",
+            "codigo": { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+            "nombre": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "t": { ".validate": "newData.val() === now" },
+            "$otro": { ".validate": false }
+          }
+        },
+
+        "ordenes": {
+          ".read": "auth != null && auth.uid === $pc",
+          "$id": {
+            ".write": "auth != null && (auth.uid === $pc || (!data.exists() && root.child('pcs').child($pc).child('owners').child(auth.uid).exists()))",
+            ".validate": "newData.hasChildren(['texto', 'de', 't'])",
+            "texto": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+            "de": { ".validate": "newData.val() === auth.uid" },
+            "t": { ".validate": "newData.val() === now" },
+            "$otro": { ".validate": false }
+          }
+        },
+
+        "estado": {
+          ".read": "auth != null && (auth.uid === $pc || root.child('pcs').child($pc).child('owners').child(auth.uid).exists())",
+          ".write": "auth != null && auth.uid === $pc"
+        },
+
+        "eventos": {
+          ".read": "auth != null && (auth.uid === $pc || root.child('pcs').child($pc).child('owners').child(auth.uid).exists())",
+          ".write": "auth != null && auth.uid === $pc"
+        }
+      }
+    }
+  }
+}

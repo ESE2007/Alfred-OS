@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b12">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Alfred">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<title>Alfred</title>
+<style>
+  :root{
+    --fondo:#070b12; --suelo:#0d141f; --linea:#1d2b3f; --texto:#e6edf6; --apagado:#8aa0b8;
+    --neon:#22d3ee; --ok:#34d399; --aviso:#fbbf24; --error:#fb7185;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--fondo); color:var(--texto);
+    font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  main{max-width:520px; min-height:100%; margin:0 auto; padding:0 16px; display:flex; flex-direction:column}
+  [hidden]{display:none !important}
+  h1{font-size:26px; line-height:1.15; margin:0 0 8px; font-weight:650; letter-spacing:-.01em}
+  p{margin:0 0 14px; color:var(--apagado); max-width:36ch}
+  button,input,select{font:inherit; color:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:2px solid var(--neon); outline-offset:2px}
+
+  /* Pantallas de una sola idea: entrada, vinculando, sin PC */
+  .centro{flex:1; display:flex; flex-direction:column; justify-content:center; padding:32px 0}
+  .orbe{width:96px; height:96px; margin:0 0 28px}
+  .orbe.chico{width:34px; height:34px; margin:0; flex:none}
+  .orbe circle{fill:none; stroke:var(--apagado); stroke-width:3; transition:stroke .4s}
+  .orbe .nucleo{fill:var(--apagado); stroke:none; transition:fill .4s}
+  .orbe.on circle{stroke:var(--neon)} .orbe.on .nucleo{fill:var(--neon)}
+  .orbe.espera circle{stroke:var(--aviso)} .orbe.espera .nucleo{fill:var(--aviso)}
+  .orbe.off circle{stroke:var(--error)} .orbe.off .nucleo{fill:var(--error)}
+  .orbe .anillo{transform-origin:50px 50px; opacity:.35}
+  .orbe.on .anillo, .orbe.espera .anillo{animation:respira 3.2s ease-in-out infinite}
+  @keyframes respira{0%,100%{transform:scale(.92); opacity:.15}50%{transform:scale(1.04); opacity:.55}}
+  @media (prefers-reduced-motion:reduce){.orbe .anillo{animation:none !important}}
+
+  .principal{
+    background:var(--neon); color:#04121a; border:0; border-radius:12px;
+    padding:14px 20px; font-weight:650; min-height:48px; align-self:flex-start;
+  }
+  .principal:active{filter:brightness(.9)}
+  .nota{font-size:14px; margin-top:18px}
+  .pasos{margin:0 0 18px; padding-left:20px; color:var(--apagado)}
+  .pasos li{margin:6px 0}
+  .pasos b{color:var(--texto); font-weight:600}
+
+  /* Panel de control */
+  #v-panel{flex:1; display:flex; flex-direction:column; padding-bottom:12px; min-height:0}
+  header{display:flex; align-items:center; gap:12px; padding:14px 0 12px}
+  header h1{font-size:19px; margin:0; flex:1; min-width:0}
+  header h1 span{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  header small{display:block; font-size:13px; font-weight:400; color:var(--apagado)}
+  header select{background:var(--suelo); border:1px solid var(--linea); border-radius:10px; padding:8px; max-width:34vw}
+  .ico{background:transparent; border:1px solid var(--linea); border-radius:10px; min-width:44px; min-height:44px; color:var(--apagado)}
+  .acciones{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px}
+  .acciones button{
+    background:var(--suelo); border:1px solid var(--linea); border-radius:10px; min-height:62px;
+    padding:8px 2px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:12px; line-height:1.15; color:var(--apagado); text-align:center;
+  }
+  .acciones button span{font-size:20px; line-height:1}
+  .acciones button:active{border-color:var(--neon); color:var(--texto)}
+  #feed{
+    flex:1; min-height:140px; overflow:auto; background:#050810; border:1px solid var(--linea); border-radius:14px;
+    padding:8px 12px; font-size:14px;
+  }
+  .e{padding:4px 0; border-bottom:1px solid #0c1420; word-break:break-word}
+  .e time{color:var(--apagado); font-size:12px; margin-right:8px}
+  .e.orden{color:#7dd3fc; font-weight:600} .e.voz{color:#6ee7b7} .e.aviso{color:var(--aviso)} .e.log{color:#9fb3c8}
+  form{display:flex; gap:8px; margin-top:10px}
+  form input{
+    flex:1; min-width:0; background:var(--suelo); border:1px solid var(--linea); border-radius:999px; padding:12px 16px;
+  }
+  form input:focus{border-color:var(--neon); outline:none}
+  form button{background:var(--neon); color:#04121a; border:0; border-radius:999px; padding:0 20px; font-weight:650; min-height:46px}
+  .cuenta{font-size:13px; color:var(--apagado); display:flex; justify-content:space-between; align-items:center; padding:10px 2px 0}
+  .cuenta button{background:none; border:0; color:var(--apagado); text-decoration:underline; padding:8px 0; min-height:36px}
+  #msg{min-height:22px; font-size:14px; margin:8px 0 0; max-width:none}
+  #msg.error{color:var(--error)} #msg.aviso{color:var(--aviso)}
+</style>
+</head>
+<body>
+<main>
+
+  <section id="v-carga" class="centro">
+    <svg class="orbe espera" viewBox="0 0 100 100" aria-hidden="true"><circle class="anillo" cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="30"/><circle class="nucleo" cx="50" cy="50" r="10"/></svg>
+    <p>Abriendo Alfred…</p>
+  </section>
+
+  <section id="v-entrada" class="centro" hidden>
+    <svg class="orbe" viewBox="0 0 100 100" aria-hidden="true"><circle class="anillo" cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="30"/><circle class="nucleo" cx="50" cy="50" r="10"/></svg>
+    <h1>Controla tu PC con Alfred, estés donde estés</h1>
+    <p>Entra con tu cuenta de Google y vincula este móvil escaneando el código QR que muestra Alfred en tu PC.</p>
+    <button class="principal" id="entrar" type="button">Continuar con Google</button>
+    <p class="nota" id="aviso-webview" hidden>Estás dentro de otra aplicación y Google no deja iniciar sesión aquí. Abre este enlace en Chrome o Safari.</p>
+    <p class="nota">Tu PC solo obedece a los móviles que tú vinculas. Puedes quitarlos cuando quieras desde Alfred.</p>
+  </section>
+
+  <section id="v-vinculando" class="centro" hidden>
+    <svg class="orbe espera" viewBox="0 0 100 100" aria-hidden="true"><circle class="anillo" cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="30"/><circle class="nucleo" cx="50" cy="50" r="10"/></svg>
+    <h1>Vinculando con tu PC</h1>
+    <p>Mira la pantalla de tu PC: Alfred te pregunta si quieres vincular este móvil. Pulsa «Sí» para terminar.</p>
+  </section>
+
+  <section id="v-vacio" class="centro" hidden>
+    <svg class="orbe off" viewBox="0 0 100 100" aria-hidden="true"><circle class="anillo" cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="30"/><circle class="nucleo" cx="50" cy="50" r="10"/></svg>
+    <h1>Todavía no hay ningún PC vinculado</h1>
+    <ol class="pasos">
+      <li>En el PC, abre Alfred y entra en <b>☰ Menú → Remoto</b>.</li>
+      <li>Activa <b>el enlace por internet</b> y pulsa <b>Vincular un móvil</b>.</li>
+      <li>Escanea el código QR con la cámara de este móvil.</li>
+    </ol>
+    <div class="cuenta"><span id="cuenta-vacio"></span><button type="button" class="salir">Salir</button></div>
+  </section>
+
+  <section id="v-panel" hidden>
+    <header>
+      <svg class="orbe chico espera" id="orbe" viewBox="0 0 100 100" aria-hidden="true"><circle class="anillo" cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="30"/><circle class="nucleo" cx="50" cy="50" r="10"/></svg>
+      <h1><span id="pc-nombre">Alfred</span><small id="pc-estado">conectando…</small></h1>
+      <select id="pc-lista" aria-label="PC que controlas" hidden></select>
+    </header>
+    <div class="acciones" id="botones"></div>
+    <div id="feed" role="log" aria-live="polite" aria-label="Lo que oye y responde Alfred"></div>
+    <form id="f" autocomplete="off">
+      <input id="t" type="text" enterkeyhint="send" autocapitalize="none" autocorrect="off" spellcheck="false"
+             maxlength="500" placeholder="Escribe una orden, sin decir «Alfred»" aria-label="Orden para Alfred">
+      <button type="submit">Enviar</button>
+    </form>
+    <div class="cuenta"><span id="cuenta"></span><button type="button" class="salir">Salir</button></div>
+  </section>
+
+  <p id="msg" role="status"></p>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+         onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getDatabase, ref, set, push, get, onValue, onChildAdded, query, limitToLast,
+         serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+/* Si NO alojas esta página en Firebase Hosting, rellena estos valores (Firebase → Configuración del proyecto →
+   Tus apps → Configuración del SDK). En Firebase Hosting se cargan solos desde /__/firebase/init.json. */
+const CONFIG_MANUAL = { apiKey: "", authDomain: "", databaseURL: "", projectId: "", appId: "" };
+
+const $ = s => document.querySelector(s);
+const VISTAS = ["carga", "entrada", "vinculando", "vacio", "panel"];
+const mostrar = v => VISTAS.forEach(x => { $("#v-" + x).hidden = x !== v; });
+function mensaje(texto = "", tipo = "") { const m = $("#msg"); m.textContent = texto; m.className = tipo; }
+
+const ORDENES = [
+  ["⏸", "Pausa", "pausa"], ["▶️", "Play", "dale play"], ["⏮", "Anterior", "canción anterior"], ["⏭", "Siguiente", "siguiente canción"],
+  ["🔉", "Bajar volumen", "baja el volumen"], ["🔊", "Subir volumen", "sube el volumen"], ["🔇", "Silencio", "silencio"], ["🎵", "Qué suena", "qué suena"],
+  ["🕒", "Hora", "qué hora es"], ["📸", "Captura", "captura de pantalla"], ["🔒", "Bloquear", "bloquea la pantalla"], ["📊", "Estado del PC", "estado del sistema"],
+];
+
+let app, auth, db, usuario = null, pcActual = null, desfase = 0, ultimoEstado = null;
+let bajas = [];                                  // funciones para dejar de escuchar el PC anterior
+let relojEstado = null;
+
+/* ── configuración ─────────────────────────────────────────────────────────── */
+async function cargarConfig() {
+  let c = {};
+  try { const r = await fetch("/__/firebase/init.json", { cache: "no-store" }); if (r.ok) c = await r.json(); } catch (e) {}
+  const f = { ...c };
+  for (const k of Object.keys(CONFIG_MANUAL)) if (CONFIG_MANUAL[k]) f[k] = CONFIG_MANUAL[k];
+  return f.apiKey && f.databaseURL ? f : null;
+}
+
+/* ── PC guardados en este móvil (solo identificadores, nada secreto) ───────── */
+const claveLista = () => "alfred_pcs_" + usuario.uid;
+const leerPCs = () => { try { return JSON.parse(localStorage.getItem(claveLista()) || "[]"); } catch (e) { return []; } };
+const guardarPCs = l => { try { localStorage.setItem(claveLista(), JSON.stringify(l)); } catch (e) {} };
+const anadirPC = id => { const l = leerPCs().filter(x => x !== id); l.unshift(id); guardarPCs(l); };
+const quitarPC = id => guardarPCs(leerPCs().filter(x => x !== id));
+
+/* ── entrada con Google ────────────────────────────────────────────────────── */
+async function entrar() {
+  mensaje();
+  const prov = new GoogleAuthProvider();
+  prov.setCustomParameters({ prompt: "select_account" });
+  try { await signInWithPopup(auth, prov); }
+  catch (e) {
+    if (["auth/popup-blocked", "auth/operation-not-supported-in-this-environment", "auth/web-storage-unsupported"].includes(e.code)) {
+      try { await signInWithRedirect(auth, prov); } catch (e2) { mensaje("No pude abrir el inicio de sesión de Google (" + e2.code + ").", "error"); }
+    } else if (!["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(e.code)) {
+      mensaje("No pude entrar con Google (" + (e.code || e.message) + ").", "error");
+    }
+  }
+}
+
+/* ── vincular este móvil con el PC del código QR (#p=<pc>.<código>) ────────── */
+function leerVinculoDeLaURL() {
+  const m = /^#p=([A-Za-z0-9]{20,40})\.([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
+  if (m) {
+    try { sessionStorage.setItem("alfred_vinculo", JSON.stringify({ pc: m[1], codigo: m[2] })); } catch (e) {}
+    history.replaceState(null, "", location.pathname);
+  }
+}
+const vinculoPendiente = () => { try { return JSON.parse(sessionStorage.getItem("alfred_vinculo") || "null"); } catch (e) { return null; } };
+const olvidarVinculo = () => { try { sessionStorage.removeItem("alfred_vinculo"); } catch (e) {} };
+
+async function vincular({ pc, codigo }) {
+  olvidarVinculo();
+  mostrar("vinculando"); mensaje();
+  try {
+    await set(ref(db, `pcs/${pc}/solicitudes/${usuario.uid}`), {
+      codigo, email: usuario.email || "", nombre: (usuario.displayName || "").slice(0, 80), t: serverTimestamp(),
+    });
+  } catch (e) {
+    mensaje("El código no es válido o ya caducó. En el PC pulsa «Vincular un móvil» para crear otro y escanéalo de nuevo.", "error");
+    return abrirInicio();
+  }
+  const aceptado = await new Promise(res => {
+    let fin = false;
+    const baja = onValue(ref(db, `pcs/${pc}/owners/${usuario.uid}`), s => {
+      if (s.exists() && !fin) { fin = true; baja(); res(true); }
+    }, () => {});
+    setTimeout(() => { if (!fin) { fin = true; baja(); res(false); } }, 120000);
+  });
+  if (!aceptado) {
+    mensaje("Tu PC no aceptó la vinculación a tiempo. Genera otro código en el PC y vuelve a escanearlo.", "aviso");
+    return abrirInicio();
+  }
+  anadirPC(pc);
+  mensaje("Móvil vinculado.");
+  abrirPC(pc);
+}
+
+/* ── panel de control ──────────────────────────────────────────────────────── */
+async function abrirInicio() {
+  const lista = leerPCs();
+  if (!lista.length) { $("#cuenta-vacio").textContent = usuario.email || ""; return mostrar("vacio"); }
+  abrirPC(lista.includes(pcActual) ? pcActual : lista[0]);
+}
+
+function dejarDeEscuchar() { bajas.forEach(f => { try { f(); } catch (e) {} }); bajas = []; clearInterval(relojEstado); }
+
+function pintarEstado() {
+  const v = ultimoEstado, orbe = $("#orbe");
+  const enLinea = !!(v && v.en_linea && (Date.now() + desfase - (v.visto || 0)) < 75000);
+  orbe.setAttribute("class", "orbe chico " + (enLinea ? "on" : (v ? "off" : "espera")));
+  $("#pc-estado").textContent = !v ? "conectando…" : enLinea
+    ? (v.escuchando ? "te escucha" : "en línea, sin micrófono") + (v.reproductor ? " (" + v.reproductor + ")" : "")
+    : "sin conexión: Alfred no está abierto o el PC no tiene internet";
+}
+
+function pintar(e) {
+  if (!e) return;
+  const f = $("#feed"), abajo = f.scrollTop + f.clientHeight >= f.scrollHeight - 40;
+  const d = document.createElement("div"); d.className = "e " + (["orden", "voz", "aviso", "log"].includes(e.tipo) ? e.tipo : "log");
+  const h = document.createElement("time"); h.textContent = e.hora || "";
+  d.append(h, document.createTextNode(String(e.texto || "")));
+  f.append(d);
+  while (f.children.length > 200) f.firstChild.remove();
+  if (abajo) f.scrollTop = f.scrollHeight;
+}
+
+function perdido() {
+  mensaje("Este PC ya no tiene vinculado tu móvil. Vuelve a vincularlo desde Alfred.", "aviso");
+  quitarPC(pcActual); pcActual = null; abrirInicio();
+}
+
+async function abrirPC(pc) {
+  dejarDeEscuchar();
+  pcActual = pc; ultimoEstado = null;
+  $("#feed").textContent = ""; $("#pc-nombre").textContent = "Alfred";
+  $("#cuenta").textContent = usuario.email || "";
+  mostrar("panel"); pintarEstado();
+  bajas.push(onValue(ref(db, ".info/serverTimeOffset"), s => { desfase = s.val() || 0; }));
+  bajas.push(onValue(ref(db, `pcs/${pc}/estado`), s => {
+    ultimoEstado = s.val();
+    if (ultimoEstado && ultimoEstado.equipo) $("#pc-nombre").textContent = ultimoEstado.equipo;
+    pintarEstado();
+  }, perdido));
+  bajas.push(onChildAdded(query(ref(db, `pcs/${pc}/eventos`), limitToLast(40)), s => pintar(s.val()), () => {}));
+  relojEstado = setInterval(pintarEstado, 10000);
+  await llenarSelector();
+}
+
+async function llenarSelector() {
+  const lista = leerPCs(), sel = $("#pc-lista");
+  sel.hidden = lista.length < 2;
+  if (lista.length < 2) return;
+  sel.textContent = "";
+  for (const id of lista) {
+    let nombre = "PC " + id.slice(0, 4);
+    try { const s = await get(ref(db, `pcs/${id}/estado/equipo`)); if (s.exists()) nombre = String(s.val()); } catch (e) {}
+    const o = document.createElement("option"); o.value = id; o.textContent = nombre; o.selected = id === pcActual; sel.append(o);
+  }
+}
+
+async function enviar(texto) {
+  texto = (texto || "").trim().slice(0, 500);
+  if (!texto || !pcActual) return;
+  mensaje();
+  if (ultimoEstado && !(ultimoEstado.en_linea && (Date.now() + desfase - (ultimoEstado.visto || 0)) < 75000))
+    mensaje("Tu PC no parece estar conectado: si no responde en unos segundos, la orden se descarta.", "aviso");
+  try { await push(ref(db, `pcs/${pcActual}/ordenes`), { texto, de: usuario.uid, t: serverTimestamp() }); }
+  catch (e) { mensaje("No pude enviar la orden. Comprueba tu conexión o vuelve a vincular el móvil.", "error"); }
+}
+
+/* ── arranque ──────────────────────────────────────────────────────────────── */
+async function iniciar() {
+  leerVinculoDeLaURL();
+  ORDENES.forEach(([ico, rotulo, orden]) => {
+    const b = document.createElement("button"); b.type = "button";
+    const i = document.createElement("span"); i.textContent = ico; i.setAttribute("aria-hidden", "true");
+    b.append(i, document.createTextNode(rotulo)); b.onclick = () => enviar(orden); $("#botones").append(b);
+  });
+  $("#f").onsubmit = e => { e.preventDefault(); const v = $("#t").value; $("#t").value = ""; enviar(v); };
+  $("#pc-lista").onchange = e => abrirPC(e.target.value);
+  $("#entrar").onclick = entrar;
+  document.querySelectorAll(".salir").forEach(b => b.onclick = async () => {
+    dejarDeEscuchar(); pcActual = null; await signOut(auth);
+  });
+  if (/; wv\)|FBAN|FBAV|Instagram|Line\//.test(navigator.userAgent)) $("#aviso-webview").hidden = false;
+
+  const cfg = await cargarConfig();
+  if (!cfg) {
+    mostrar("entrada"); $("#entrar").disabled = true;
+    return mensaje("Falta la configuración de Firebase en esta página. Sigue la guía (GUIA_enlace_google.md).", "error");
+  }
+  app = initializeApp(cfg); auth = getAuth(app); db = getDatabase(app);
+  getRedirectResult(auth).catch(e => mensaje("No pude terminar de entrar con Google (" + e.code + ").", "error"));
+
+  onAuthStateChanged(auth, async u => {
+    usuario = u;
+    if (!u) { dejarDeEscuchar(); mostrar("entrada"); return; }
+    const pend = vinculoPendiente();
+    if (pend) return vincular(pend);
+    abrirInicio();
+  });
+}
+iniciar();
+</script>
+</body>
+</html>
