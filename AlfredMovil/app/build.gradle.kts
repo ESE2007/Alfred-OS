@@ -11,8 +11,8 @@ android {
         applicationId = "com.alfred.remoto"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
     }
 
     buildTypes {
@@ -27,4 +27,9 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+dependencies {
+    // Lector de códigos QR de Google Play Services: no pide permiso de cámara y no añade peso a la app.
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 }

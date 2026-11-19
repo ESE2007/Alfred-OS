@@ -3,6 +3,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Para poder abrir la app Tailscale (si está instalada) desde los ajustes. -->
+    <queries>
+        <package android:name="com.tailscale.ipn" />
+    </queries>
+
     <!-- El control remoto de Alfred usa HTTP dentro de tu red (Wi-Fi de casa, Tailscale...): por eso se permite texto claro. -->
     <application
         android:allowBackup="false"
@@ -11,14 +16,27 @@
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true">
 
+        <!-- Google Play Services descarga el lector de QR al instalar la app (si no, la primera vez que se usa). -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Enlaces de vinculación: alfred://v2?... (si tu cámara los abre, entran directo). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="alfred" />
             </intent-filter>
         </activity>
     </application>

@@ -10,17 +10,44 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Guarda la dirección del PC y la clave. La clave se cifra con una llave del Android Keystore (no sale del teléfono). */
+/**
+ * Guarda el PC vinculado: sus direcciones (Wi-Fi, Tailscale…), su identificador y la clave de ESTE teléfono.
+ * La clave se cifra con una llave del Android Keystore (no sale del teléfono).
+ * Los nombres "dir" y "clave" son los de la versión 1.0: quien actualiza conserva su vinculación.
+ */
 class Almacen(ctx: Context) {
     private val p = ctx.getSharedPreferences("alfred_remoto", Context.MODE_PRIVATE)
 
+    /** Dirección por la que se conectó la última vez. */
     var direccion: String
         get() = p.getString("dir", "") ?: ""
         set(v) { p.edit().putString("dir", v).apply() }
 
+    /** Todas las direcciones conocidas del PC, en orden de preferencia. */
+    var rutas: List<String>
+        get() {
+            val guardadas = (p.getString("rutas", "") ?: "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+            if (guardadas.isNotEmpty()) return guardadas
+            return if (direccion.isNotEmpty()) listOf(direccion) else emptyList()   // viene de la versión 1.0
+        }
+        set(v) { p.edit().putString("rutas", v.distinct().joinToString("\n")).apply() }
+
+    /** Nombre del PC (para mostrarlo). */
+    var nombrePc: String
+        get() = p.getString("pc", "") ?: ""
+        set(v) { p.edit().putString("pc", v).apply() }
+
+    /** Identificador del PC: sirve para reconocerlo si cambia de IP. */
+    var idPc: String
+        get() = p.getString("idpc", "") ?: ""
+        set(v) { p.edit().putString("idpc", v).apply() }
+
     var clave: String
         get() = descifrar(p.getString("clave", "") ?: "")
         set(v) { p.edit().putString("clave", cifrar(v)).apply() }
+
+    val vinculado: Boolean
+        get() = clave.isNotEmpty() && rutas.isNotEmpty()
 
     fun borrar() { p.edit().clear().apply() }
 
