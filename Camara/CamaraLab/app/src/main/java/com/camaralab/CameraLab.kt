@@ -36,6 +36,7 @@ data class VendorTest(val key: String, val values: List<Int>, val what: String)
 data class Record(
     val label: String,
     val error: String? = null,
+    val via: String = "",
     val ms: Long = 0,
     val bytes: Int = 0,
     val mean: Float = 0f,
@@ -93,7 +94,10 @@ class CameraLab(
         VendorTest("com.transsion.megSuperresolutionMode", listOf(0, 1), "Infinix: super resolución"),
         VendorTest("com.transsion.enhanceImageQuality", listOf(0, 1), "Infinix: mejora de calidad de imagen"),
         VendorTest("com.transsion.dromode", listOf(0, 1), "Infinix: rango dinámico (DRO)"),
-        VendorTest("com.transsion.deFlareMode", listOf(0, 1), "Infinix: reducción de destellos")
+        VendorTest("com.transsion.deFlareMode", listOf(0, 1), "Infinix: reducción de destellos"),
+        VendorTest("com.transsion.asdMode", listOf(0, 1), "Infinix: activar detección de escena"),
+        VendorTest("com.mediatek.facefeature.asdmode", listOf(0, 1), "MediaTek: activar detección de escena"),
+        VendorTest("com.transsion.moonDetectionMode", listOf(0, 1), "Infinix: detección de luna")
     )
 
     // ------------------------------------------------------------------ Ejecución
@@ -326,14 +330,11 @@ class CameraLab(
             builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
             builder.set(CaptureRequest.JPEG_QUALITY, 100.toByte())
 
+            var via = ""
             if (keyName != null) {
                 val key = reqKeys[keyName] ?: return Record(label, error = "la clave no existe")
-                try {
-                    @Suppress("UNCHECKED_CAST")
-                    builder.set(key as CaptureRequest.Key<Any>, value!!)
-                } catch (t: Throwable) {
-                    return Record(label, error = "la clave no acepta un entero (${t.javaClass.simpleName})")
-                }
+                via = setVendor(builder, key, value!!)
+                    ?: return Record(label, error = "ningún formato fue aceptado (int[], byte[], int, long[])")
             }
 
             imageQueue.clear()
@@ -373,6 +374,7 @@ class CameraLab(
 
             return Record(
                 label = label,
+                via = via,
                 ms = ms,
                 bytes = bytes.size,
                 mean = stats[0],
@@ -384,6 +386,27 @@ class CameraLab(
         } catch (t: Throwable) {
             return Record(label, error = "excepción: ${t.javaClass.simpleName} ${t.message ?: ""}".trim())
         }
+    }
+
+    /** Las claves del fabricante casi siempre son arreglos: se prueba cada formato hasta que uno sea aceptado. */
+    private fun setVendor(builder: CaptureRequest.Builder, key: CaptureRequest.Key<*>, v: Int): String? {
+        @Suppress("UNCHECKED_CAST")
+        val k = key as CaptureRequest.Key<Any>
+        val attempts = listOf<Pair<String, Any>>(
+            "int[]" to intArrayOf(v),
+            "byte[]" to byteArrayOf(v.toByte()),
+            "int" to v,
+            "long[]" to longArrayOf(v.toLong())
+        )
+        for ((name, value) in attempts) {
+            try {
+                builder.set(k, value)
+                return name
+            } catch (t: Throwable) {
+                // probar el siguiente formato
+            }
+        }
+        return null
     }
 
     private fun vendorResult(result: CaptureResult): Map<String, String> {
@@ -485,8 +508,8 @@ class CameraLab(
         } else {
             String.format(
                 Locale.US,
-                "%s: OK %.1f s | %.1f MB | brillo %.0f | sombras %.1f%% | quemado %.1f%% | detalle %.0f",
-                r.label, r.ms / 1000.0, r.bytes / 1e6, r.mean, r.dark, r.bright, r.detail
+                "%s%s: OK %.1f s | %.1f MB | brillo %.0f | sombras %.1f%% | quemado %.1f%% | detalle %.0f",
+                r.label, if (r.via.isNotEmpty()) " [${r.via}]" else "", r.ms / 1000.0, r.bytes / 1e6, r.mean, r.dark, r.bright, r.detail
             )
         }
 
@@ -496,7 +519,7 @@ class CameraLab(
         skipped: List<String>,
         fatal: String?
     ): String = buildString {
-        appendLine("LABORATORIO DE CLAVES v1.0")
+        appendLine("LABORATORIO DE CLAVES v1.1")
         appendLine("Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
         appendLine("Fotos guardadas en Imágenes/CamaraLab (LAB_nn_clave_valor.jpg) para compararlas a ojo.")
         fatal?.let { appendLine("\n!! $it") }

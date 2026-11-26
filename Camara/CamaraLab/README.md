@@ -1,4 +1,6 @@
-# Laboratorio Cámara
+# Laboratorio Cámara v1.1
+
+Cambios respecto a la v1.0: las claves ahora se prueban como arreglos (`int[]`, `byte[]`), que es el formato que usa la cámara de Infinix; antes se probaban como números sueltos y todas fallaban. Se agregaron pruebas para activar la detección de escena.
 
 Prueba, una por una, las claves ocultas de Infinix y MediaTek que tu teléfono anunció en el diagnóstico,
 para saber cuáles activan de verdad algún procesamiento (HDR, reducción de ruido por varias fotos, modo noche, etc.).
