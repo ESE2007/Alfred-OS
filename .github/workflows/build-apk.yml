@@ -1,4 +1,4 @@
-name: Compilar APK CamaraDiag
+name: Compilar APK CamaraLab
 
 on:
   push:
@@ -26,11 +26,11 @@ jobs:
           gradle-version: '8.7'
 
       - name: Compilar APK Debug
-        working-directory: ./Camara/CamaraDiag
+        working-directory: ./Camara/CamaraLab
         run: gradle assembleDebug
 
       - name: Subir APK generado
         uses: actions/upload-artifact@v4
         with:
-          name: CamaraDiag-debug
-          path: Camara/CamaraDiag/app/build/outputs/apk/debug/app-debug.apk
+          name: CamaraLab-debug
+          path: Camara/CamaraLab/app/build/outputs/apk/debug/app-debug.apk
