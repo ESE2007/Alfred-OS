@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStart: Button
     private lateinit var btnStop: Button
 
-private var previewSurfaceTexture: SurfaceTexture? = null
+    private var previewSurfaceTexture: SurfaceTexture? = null
     private var lab: CameraLab? = null
     private var running = false
     private var report = ""
@@ -67,16 +67,16 @@ private var previewSurfaceTexture: SurfaceTexture? = null
 
         textureView = TextureView(this).apply {
             surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-             override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
-    previewSurfaceTexture = st
-}
+                override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                    previewSurfaceTexture = st
+                }
 
                 override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
 
-override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-    previewSurfaceTexture = null
-    return true
-}
+                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                    previewSurfaceTexture = null
+                    return true
+                }
 
                 override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
             }
@@ -127,7 +127,6 @@ override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
 
     override fun onPause() {
         super.onPause()
-        // Si la app pasa a segundo plano la cámara se cierra: se detienen las pruebas
         lab?.cancelled = true
     }
 
@@ -137,13 +136,10 @@ override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
         io.shutdown()
     }
 
-    // ------------------------------------------------------------------ Acciones
-
     private fun onStartClicked() {
         if (running) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
-            val st = previewSurfaceTexture
         ) {
             startLab()
         } else {
@@ -152,7 +148,7 @@ override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
     }
 
     private fun startLab() {
-        val st = surfaceTexture
+        val st = previewSurfaceTexture
         if (st == null) {
             Toast.makeText(this, "La vista previa aún no está lista, intenta de nuevo", Toast.LENGTH_SHORT).show()
             return
