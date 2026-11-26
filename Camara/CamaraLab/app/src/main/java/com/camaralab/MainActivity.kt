@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStart: Button
     private lateinit var btnStop: Button
 
-    private var surfaceTexture: SurfaceTexture? = null
+    private var previewSurfaceTexture: SurfaceTexture? = null
     private var lab: CameraLab? = null
     private var running = false
     private var report = ""
@@ -68,13 +68,13 @@ class MainActivity : AppCompatActivity() {
         textureView = TextureView(this).apply {
             surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                 override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
-                    surfaceTexture = st
+                    previewSurfaceTexture = st
                 }
 
                 override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
 
                 override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                    surfaceTexture = null
+                    previewSurfaceTexture = null
                     return true
                 }
 
@@ -127,7 +127,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Si la app pasa a segundo plano la cámara se cierra: se detienen las pruebas
         lab?.cancelled = true
     }
 
@@ -136,8 +135,6 @@ class MainActivity : AppCompatActivity() {
         lab?.cancelled = true
         io.shutdown()
     }
-
-    // ------------------------------------------------------------------ Acciones
 
     private fun onStartClicked() {
         if (running) return
@@ -151,7 +148,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLab() {
-        val st = surfaceTexture
+        val st = previewSurfaceTexture
         if (st == null) {
             Toast.makeText(this, "La vista previa aún no está lista, intenta de nuevo", Toast.LENGTH_SHORT).show()
             return
