@@ -67,9 +67,9 @@ class MainActivity : AppCompatActivity() {
 
         textureView = TextureView(this).apply {
             surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
-                    surfaceTexture = st
-                }
+             override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+    previewSurfaceTexture = st
+}
 
                 override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
 
