@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStart: Button
     private lateinit var btnStop: Button
 
-    private var surfaceTexture: SurfaceTexture? = null
+private var previewSurfaceTexture: SurfaceTexture? = null
     private var lab: CameraLab? = null
     private var running = false
     private var report = ""
@@ -73,10 +73,10 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
 
-                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                    surfaceTexture = null
-                    return true
-                }
+override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+    previewSurfaceTexture = null
+    return true
+}
 
                 override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
             }
@@ -143,6 +143,7 @@ class MainActivity : AppCompatActivity() {
         if (running) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
+            val st = previewSurfaceTexture
         ) {
             startLab()
         } else {
