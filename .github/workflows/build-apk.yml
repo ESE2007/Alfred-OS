@@ -1,4 +1,4 @@
-name: Compilar APK CamaraLab
+name: Compilar APK CamaraAuto2
 
 on:
   push:
@@ -26,11 +26,14 @@ jobs:
           gradle-version: '8.7'
 
       - name: Compilar APK Debug
-        working-directory: ./Camara/CamaraLab
-        run: gradle assembleDebug
+        run: |
+          DIR_PROYECTO=$(find ./Camara/CamaraAuto2 -name "settings.gradle*" -printf "%h\n" | head -n 1)
+          echo "Compilando en: $DIR_PROYECTO"
+          cd "$DIR_PROYECTO"
+          gradle assembleDebug
 
       - name: Subir APK generado
         uses: actions/upload-artifact@v4
         with:
-          name: CamaraLab-debug
-          path: Camara/CamaraLab/app/build/outputs/apk/debug/app-debug.apk
+          name: CamaraAuto2-debug
+          path: Camara/CamaraAuto2/**/app/build/outputs/apk/debug/app-debug.apk
