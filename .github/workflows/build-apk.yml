@@ -1,4 +1,4 @@
-name: Compilar APK AlfredMovil
+name: Compilar APK CamaraDiag
 
 on:
   push:
@@ -26,11 +26,11 @@ jobs:
           gradle-version: '8.7'
 
       - name: Compilar APK Debug
-        working-directory: ./AlfredMovil
+        working-directory: ./Camara/CamaraDiag
         run: gradle assembleDebug
 
       - name: Subir APK generado
         uses: actions/upload-artifact@v4
         with:
-          name: AlfredMovil-debug
-          path: AlfredMovil/app/build/outputs/apk/debug/app-debug.apk
+          name: CamaraDiag-debug
+          path: Camara/CamaraDiag/app/build/outputs/apk/debug/app-debug.apk
