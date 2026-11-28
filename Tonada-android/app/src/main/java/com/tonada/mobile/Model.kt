@@ -47,8 +47,8 @@ class Now(
 class QItem(val index: Int, val title: String, val artist: String, val current: Boolean, val key: String)
 
 /**
- * Single place that holds the UI state. Everything here runs on the main thread;
- * the network and MediaStore work posts its results back.
+- Single place that holds the UI state. Everything here runs on the main thread;
+- the network and MediaStore work posts its results back.
  */
 object Model {
     lateinit var app: Application
@@ -171,6 +171,7 @@ object Model {
 
     // --------------------------------------------------------------------- remote
     var pair by mutableStateOf<PairInfo?>(null)
+        private set
     var rStatus by mutableStateOf(MqttClient.Status.OFF)
     var rDetail by mutableStateOf<String?>(null)
     var rState by mutableStateOf<RemoteState?>(null)
