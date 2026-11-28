@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fitsSystemWindows="true">
+
+    <!-- Ventana visible de la foto. Su tamaño y el de la vista previa se ajustan desde el código. -->
+    <FrameLayout
+        android:id="@+id/previewWindow"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:clipChildren="true">
+
+        <TextureView
+            android:id="@+id/textureView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
+        <com.camaraauto2.GridOverlay
+            android:id="@+id/gridOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <View
+        android:id="@+id/focusRing"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:alpha="0"
+        android:background="@drawable/focus_ring" />
+
+    <!-- Barras superiores -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="vertical"
+        android:paddingHorizontal="8dp"
+        android:paddingTop="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btnFlash"
+                style="@style/Pill"
+                android:text="⚡ OFF" />
+
+            <TextView
+                android:id="@+id/btnMode"
+                style="@style/Pill"
+                android:text="MODO: AUTO" />
+
+            <TextView
+                android:id="@+id/btnGrid"
+                style="@style/Pill"
+                android:text="▦" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btnAspect"
+                style="@style/Pill"
+                android:text="4:3" />
+
+            <TextView
+                android:id="@+id/btnSpeed"
+                style="@style/Pill"
+                android:text="✨ CALIDAD" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/sceneLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="124dp"
+        android:background="@drawable/pill_bg"
+        android:gravity="center"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="6dp"
+        android:text="Iniciando cámara…"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/zoomLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="150dp"
+        android:background="@drawable/pill_bg"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:text="1.0x"
+        android:textColor="#FFD54F"
+        android:textSize="13sp" />
+
+    <!-- Aviso mientras la cámara procesa -->
+    <TextView
+        android:id="@+id/processing"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/pill_bg"
+        android:gravity="center"
+        android:padding="20dp"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <!-- Última foto: toca para verla -->
+    <ImageView
+        android:id="@+id/thumb"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="36dp"
+        android:layout_marginBottom="57dp"
+        android:background="@drawable/thumb_bg"
+        android:clickable="true"
+        android:clipToOutline="true"
+        android:contentDescription="Ver última foto"
+        android:focusable="true"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:id="@+id/shutter"
+        android:layout_width="78dp"
+        android:layout_height="78dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="48dp"
+        android:background="@drawable/shutter"
+        android:clickable="true"
+        android:focusable="true" />
+
+</FrameLayout>
