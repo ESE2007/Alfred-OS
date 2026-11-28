@@ -170,6 +170,7 @@ object Model {
     }
 
     // --------------------------------------------------------------------- remote
+@set:JvmName("setPairProp")
     var pair by mutableStateOf<PairInfo?>(null)
         private set
     var rStatus by mutableStateOf(MqttClient.Status.OFF)
